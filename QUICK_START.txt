@@ -1,0 +1,187 @@
+# 🚀 QUICK START - Base de Conhecimento v2.0
+
+## O que mudou? (TL;DR)
+
+✅ **ANTES:**
+- 2 arquivos: `extract.py` + `ingest.py` (código duplicado)
+- HTML bruto (com menus, scripts, etc.)
+- Sem integração pronta com Vector Databases
+
+✅ **AGORA:**
+- 1 arquivo único: `ingest.py` (consolidado)
+- HTML limpo (apenas conteúdo relevante)
+- JSONL pronto para RAG (Retrieval-Augmented Generation)
+- Inclui guias completos + exemplos
+
+---
+
+## 🎯 Como Começar
+
+### 1. Executar a Ingestão
+```bash
+python ingest.py
+```
+
+Isso gera:
+- `data/base_conhecimento.jsonl` ← 🧠 **USE ISSO!**
+- `data/ingest_summary.json`
+- `data/raw/*.pdf` (backup)
+- `data/extracted/*.jsonl` (por site)
+
+### 2. Validar a Base
+```bash
+python validar_base.py
+```
+
+Mostra:
+- Estrutura de diretórios ✅
+- Integridade do JSONL ✅
+- Estatísticas ✅
+- Amostra de dados ✅
+
+### 3. Testar Exemplos
+```bash
+python exemplos_uso.py
+```
+
+Oferece menu interativo com:
+1. Leitura simples
+2. Filtrar por site
+3. Buscar palavra-chave
+4. Estatísticas
+5. Exportar para CSV
+6. Remover duplicatas
+7. Listar sites
+
+---
+
+## 📊 Arquivo JSONL Explicado
+
+**Formato:** Múltiplos JSONs, um por linha
+
+```json
+{
+  "id": "documento.pdf#chunk0",
+  "source_url": "https://...",
+  "site_origem": "Empreendimento X",
+  "site_slug": "empreendimento_x",
+  "arquivo": "documento.pdf",
+  "chunk_index": 0,
+  "total_chunks": 15,
+  "texto": "Conteúdo limpo do documento...",
+  "crawl_date": "2026-02-26T10:30:00",
+  "sha256": "abcd1234..."
+}
+```
+
+**Tamanho:** Streaming (processa linha por linha)
+**Uso:** Vector Databases, LangChain, LlamaIndex, etc.
+
+---
+
+## 📚 Documentação Completa
+
+| Arquivo | O que é | Quando ler |
+|---------|---------|-----------|
+| [README.md](README.md) | Documentação completa do projeto | **Sempre** (visão geral) |
+| [MUDANCAS_V2.md](MUDANCAS_V2.md) | O que mudou entre v1.0 e v2.0 | Entender as mudanças |
+| [USAR_BASE_CONHECIMENTO.md](USAR_BASE_CONHECIMENTO.md) | Guia técnico detalhado | Integração com LLMs |
+| [exemplos_uso.py](exemplos_uso.py) | Código pronto para usar | Copiar e adaptar |
+| [validar_base.py](validar_base.py) | Script de validação | Após rodar ingest.py |
+
+---
+
+## 🧠 O que as Funções Novas Fazem?
+
+### limpar_conteudo_html()
+```python
+html_sujo = "<html><header>Menu</header><script>...</script><p>Conteúdo</p></html>"
+html_limpo = limpar_conteudo_html(html_sujo)
+# Resultado: "Conteúdo"
+```
+
+Remove: `<script>`, `<style>`, `<header>`, `<footer>`, `<nav>`, `<form>`, etc.
+
+### salvar_para_base_conhecimento()
+```python
+documento = {
+    "id": "doc#0",
+    "site_origem": "Apogeu",
+    "texto": "Conteúdo..."
+}
+salvar_para_base_conhecimento(documento)
+# Adiciona 1 linha em data/base_conhecimento.jsonl
+```
+
+Modo append (não sobrescreve). Ideal para processamento contínuo.
+
+---
+
+## 🚀 Próximos Passos Recomendados
+
+### Esta Semana
+- [x] Executar `python ingest.py`
+- [x] Validar com `python validar_base.py`
+- [ ] Ler dados com `python exemplos_uso.py`
+
+### Próximas 2 Semanas
+- [ ] Configurar ChromaDB: `pip install chromadb`
+- [ ] Indexar JSONL: copiar código de [USAR_BASE_CONHECIMENTO.md](USAR_BASE_CONHECIMENTO.md)
+- [ ] Testar buscas semânticas
+
+### Próximo Mês
+- [ ] Conectar ao Gemini (LangChain)
+- [ ] Integrar webhooks no n8n
+- [ ] Deploy em produção
+
+---
+
+## 📞 Dúvidas Rápidas
+
+**P: Por que JSONL?**
+A: Permite processar bilhões de registros sem carregar tudo na RAM.
+
+**P: Posso usar com ChatGPT direto?**
+A: Não. Use ChromaDB → LangChain → APIs (Gemini/GPT).
+
+**P: Arquivo fica muito grande?**
+A: Sim, mas é normal. Comprime bem com gzip.
+
+**P: Como atualizar incrementalmente?**
+A: Use `salvar_para_base_conhecimento()` direto (append).
+
+---
+
+## ✅ Checklist Final
+
+- [x] Consolidado em 1 arquivo
+- [x] HTML limpo automaticamente
+- [x] JSONL gerado e pronto
+- [x] Documentação completa
+- [x] Exemplos funcionais
+- [x] Scripts de validação
+- [ ] Você executou `python ingest.py` ← PRÓXIMO PASSO!
+
+---
+
+## 📥 Próximo Comando
+
+```bash
+python ingest.py
+```
+
+**Tempo estimado:** 5-15 minutos (depende do número de PDFs)
+
+Depois:
+```bash
+python validar_base.py
+```
+
+E veja os dados:
+```bash
+python exemplos_uso.py
+```
+
+---
+
+**Pronto para começar! 🚀**
