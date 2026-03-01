@@ -36,15 +36,14 @@ def _merge_profile(old: dict, new: dict) -> dict:
             merged[k] = v
     return merged
 
-async def update_profile(contact_id: str, patch: dict) -> Lead:
-    lead = await get_or_create_lead(contact_id)
+async def update_profile(lead: Lead, patch: dict) -> Lead:
     old = json.loads(lead.profile_json or "{}")
     merged = _merge_profile(old, patch)
 
     async with SessionLocal() as session:
         await session.execute(
             update(Lead)
-            .where(Lead.contact_id == contact_id)
+            .where(Lead.contact_id == lead.contact_id)
             .values(profile_json=json.dumps(merged))
         )
         await session.commit()
@@ -52,11 +51,10 @@ async def update_profile(contact_id: str, patch: dict) -> Lead:
     lead.profile_json = json.dumps(merged)
     return lead
 
-async def set_stage(contact_id: str, stage: str) -> Lead:
-    lead = await get_or_create_lead(contact_id)
+async def set_stage(lead: Lead, stage: str) -> Lead:
     async with SessionLocal() as session:
         await session.execute(
-            update(Lead).where(Lead.contact_id == contact_id).values(stage=stage)
+            update(Lead).where(Lead.contact_id == lead.contact_id).values(stage=stage)
         )
         await session.commit()
     lead.stage = stage
