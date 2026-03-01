@@ -10,6 +10,13 @@ from typing import List, Dict, Any, Optional
 import pickle
 import numpy as np
 from sentence_transformers import SentenceTransformer
+import sys
+
+# force stdout to utf-8 with replacement errors so emojis don't crash on Windows
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 # Inicializa modelo de embeddings
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
@@ -278,13 +285,21 @@ class IntelligenceCore:
         self.learning_logger = LearningLogger()
         self.memory_system = MemorySystem()
     
-    def add_training_data(self, documents: List[str], source: str, category: str = "geral"):
-        """Adiciona dados de treinamento."""
+    def add_training_data(self, documents: List[str], source: str, category: str = "geral", public: bool = True):
+        """Adiciona dados de treinamento.
+
+        Args:
+            documents: lista de textos
+            source: origem (URL, PDF etc)
+            category: categoria para classificação
+            public: se False, o documento não será usado em respostas ao cliente
+        """
         metadatas = [
             {
                 "fonte": source,
                 "categoria": category,
-                "data_adicao": datetime.now().isoformat()
+                "data_adicao": datetime.now().isoformat(),
+                "expose_to_client": public
             }
             for _ in documents
         ]
@@ -296,10 +311,33 @@ class IntelligenceCore:
             "documentos_adicionados": len(documents)
         })
     
-    def search_knowledge(self, query: str, n_results: int = 5) -> Dict[str, Any]:
-        """Busca conhecimento relevante."""
+    def search_knowledge(self, query: str, n_results: int = 5, client_visible: bool = True) -> Dict[str, Any]:
+        """Busca conhecimento relevante.
+
+        Args:
+            query: texto de busca
+            n_results: número de resultados
+            client_visible: se True, filtra fora documentos marcados como não públicos
+        """
         results = self.knowledge_store.search(query, n_results)
-        
+        if client_visible:
+            # filtrar documentos onde metadata.expose_to_client == False
+            filtered_docs = []
+            filtered_meta = []
+            filtered_ids = []
+            filtered_sims = []
+            for doc, meta, id_, sim in zip(results['documents'], results['metadatas'], results['ids'], results['similarities']):
+                if meta.get('expose_to_client', True):
+                    filtered_docs.append(doc)
+                    filtered_meta.append(meta)
+                    filtered_ids.append(id_)
+                    filtered_sims.append(sim)
+            results = {
+                'documents': filtered_docs,
+                'metadatas': filtered_meta,
+                'ids': filtered_ids,
+                'similarities': filtered_sims
+            }
         print(f"🔍 Busca realizada: '{query}'")
         print(f"📊 Resultados: {len(results['documents'])} documento(s) encontrado(s)")
         
