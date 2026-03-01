@@ -61,11 +61,11 @@ async def handle_message(contact_id: str, text: str) -> dict:
                 patch["bairro"] = "Jacarepaguá" if "jacare" in b else b.title()
 
     if patch:
-        lead = await update_profile(contact_id, patch)
+        lead = await update_profile(lead, patch)
         profile = json.loads(lead.profile_json or "{}")
 
     # Máquina de estados simples (consultor por etapas)
-    await set_stage(contact_id, "qualificando")
+    await set_stage(lead, "qualificando")
 
     if profile.get("bairro") is None:
         return {"reply": "Perfeito. Pra eu te indicar só o que faz sentido, qual bairro ou região você quer (e se aceita regiões próximas)?"}
@@ -86,7 +86,7 @@ async def handle_message(contact_id: str, text: str) -> dict:
         return {"reply": "Última pra eu fechar o cenário: hoje você tem alguma **restrição no nome** (SPC/Serasa)? (sim/não)"}
 
     # Se chegou aqui, o lead já está “quase pronto” no MVP
-    await set_stage(contact_id, "ofertando")
+    await set_stage(lead, "ofertando")
 
     props = match_properties(
         bairro=profile.get("bairro"),
