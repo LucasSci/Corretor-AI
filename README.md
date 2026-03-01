@@ -56,6 +56,18 @@ data/
 
 ### 6. Novas Funções Integradas
 
+#### 6.1 Visibilidade de Conhecimento
+
+Todas as rotinas de ingestão (e o método `add_training_data` da classe
+`IntelligenceCore`) aceitam um parâmetro booleano `public` que indica se o
+conteúdo deve estar disponível em respostas ao **cliente**. O valor padrão é
+`True`, mas ao marcar `public=False` você garante que o trecho será armazenado
+no vetor interno e nos logs de aprendizado, porém **não aparecerá** quando a
+busca for realizada com `client_visible=True` (comportamento usado pelo
+bot durante um atendimento). Essa medida evita que documentos internos,
+como manuais de equipe ou rascunhos, sejam acidentalmente expostos.
+
+
 #### 6.1 Limpeza de HTML
 ```python
 limpar_conteudo_html(html_content)

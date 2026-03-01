@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 import PyPDF2
 from bs4 import BeautifulSoup
+import time
 
 from knowledge_manager import intelligence_core
 
@@ -36,8 +37,12 @@ class DataIngestionPipeline:
         raise last_exc
     
     # ============ PDFs ============
-    def ingest_pdf(self, pdf_path: str, categoria: str = "documento"):
-        """Ingere dados de um arquivo PDF."""
+    def ingest_pdf(self, pdf_path: str, categoria: str = "documento", public: bool = True):
+        """Ingere dados de um arquivo PDF.
+
+        Args:
+            public: se False, esse conteúdo não será usado em respostas a clientes.
+        """
         print(f"📄 Lendo PDF: {pdf_path}")
         
         if not os.path.exists(pdf_path):
@@ -58,7 +63,8 @@ class DataIngestionPipeline:
                 self.intelligence_core.add_training_data(
                     documents=documentos,
                     source=f"PDF: {os.path.basename(pdf_path)}",
-                    category=categoria
+                    category=categoria,
+                    public=public
                 )
                 print(f"✅ PDF processado: {len(documentos)} página(s)")
         
@@ -76,8 +82,12 @@ class DataIngestionPipeline:
             self.ingest_pdf(str(pdf_file), categoria)
     
     # ============ Imóveis ============
-    def ingest_property(self, property_data: Dict[str, Any]):
-        """Ingere informações de um imóvel."""
+    def ingest_property(self, property_data: Dict[str, Any], public: bool = True):
+        """Ingere informações de um imóvel.
+
+        Args:
+            public: se False, não será exposto a clientes
+        """
         documentos = []
         
         # Montar texto estruturado do imóvel
@@ -111,7 +121,8 @@ DESCRIÇÃO: {descricao}
         self.intelligence_core.add_training_data(
             documents=documentos,
             source=f"Imóvel: {nome}",
-            category="imovel"
+            category="imovel",
+            public=public
         )
         
         print(f"✅ Imóvel '{nome}' adicionado ao conhecimento")
@@ -123,8 +134,12 @@ DESCRIÇÃO: {descricao}
             self.ingest_property(prop)
     
     # ============ Websites ============
-    def ingest_website(self, url: str, max_pages: int = 5):
-        """Ingere conteúdo de um website."""
+    def ingest_website(self, url: str, max_pages: int = 5, public: bool = True):
+        """Ingere conteúdo de um website.
+
+        Args:
+            public: se False, o conteúdo não será usado em respostas ao cliente
+        """
         print(f"🌐 Explorando website: {url}")
         
         visited = set()
@@ -172,11 +187,9 @@ DESCRIÇÃO: {descricao}
             self.intelligence_core.add_training_data(
                 documents=documentos,
                 source=f"Website: {url}",
-                category="website"
+                category="website",
+                public=public
             )
-            print(f"✅ Website processado: {len(documentos)} página(s)")
-    
-    # ============ Arquivos de Texto ============
     def ingest_text_file(self, file_path: str, categoria: str = "documento"):
         """Ingere arquivo de texto."""
         print(f"📝 Lendo arquivo: {file_path}")
@@ -250,18 +263,23 @@ DESCRIÇÃO: {descricao}
             print(f"❌ Erro ao processar JSON: {e}")
     
     # ============ Conhecimento Direto ============
-    def add_custom_knowledge(self, knowledge_text: str, categoria: str = "custom"):
-        """Adiciona conhecimento customizado diretamente."""
+    def add_custom_knowledge(self, knowledge_text: str, categoria: str = "custom", public: bool = True):
+        """Adiciona conhecimento customizado diretamente.
+
+        Args:
+            public: se False, não será exposto ao cliente
+        """
         documentos = [knowledge_text]
         
         self.intelligence_core.add_training_data(
             documents=documentos,
             source="Input direto",
-            category=categoria
+            category=categoria,
+            public=public
         )
         
         print(f"✅ Conhecimento adicionado: {categoria}")    
-    def ingest_multiple_websites(self, urls: List[str], max_pages_per_site: int = 3):
+    def ingest_multiple_websites(self, urls: List[str], max_pages_per_site: int = 3, public: bool = True):
         """Ingere múltiplos websites de uma vez."""
         print(f"\n🌐 Ingerindo {len(urls)} website(s)...")
         total_conteudo = 0
@@ -269,7 +287,7 @@ DESCRIÇÃO: {descricao}
         for i, url in enumerate(urls, 1):
             print(f"  [{i}/{len(urls)}] {url[:60]}...", end=" ")
             try:
-                self.ingest_website(url, max_pages=max_pages_per_site)
+                self.ingest_website(url, max_pages=max_pages_per_site, public=public)
                 print("✅")
                 total_conteudo += 1
             except Exception as e:
@@ -277,7 +295,7 @@ DESCRIÇÃO: {descricao}
         
         print(f"\n✅ {total_conteudo}/{len(urls)} websites ingeridos com sucesso!")
     
-    def ingest_website_with_depth(self, url: str, max_depth: int = 2, max_pages: int = 10):
+    def ingest_website_with_depth(self, url: str, max_depth: int = 2, max_pages: int = 10, public: bool = True):
         """
         Ingere website com controle de profundidade.
         
