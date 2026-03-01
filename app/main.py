@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.db.init_db import init_db
 from app.services.agent import handle_message
 
@@ -7,8 +7,8 @@ from app.services.agent import handle_message
 app = FastAPI(title="CorretorIA - MVP")
 
 class MessageIn(BaseModel):
-    contact_id: str
-    text: str
+    contact_id: str = Field(..., max_length=80)
+    text: str = Field(..., max_length=1000)
 
 @app.on_event("startup")
 async def on_startup():
