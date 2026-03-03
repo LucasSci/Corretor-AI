@@ -15,18 +15,15 @@ class MessageIn(BaseModel):
     text: str = Field(..., max_length=1000)
 
 @router.post("/chat")
-async def chat(payload: MessageIn):
+async def chat(payload: MessageIn) -> Dict[str, Any]:
     """
     Rota legada ou genérica para testes diretos (não Evolution API).
     """
     result = await handle_message(payload.contact_id, payload.text)
-
-    # Para o endpoint antigo, podemos querer que retorne o resultado diretamente.
-    # Mas como estamos usando Evolution agora, poderíamos responder também.
     return {"contact_id": payload.contact_id, **result}
 
 @router.post("/webhook")
-async def webhook_evolution(request: Request):
+async def webhook_evolution(request: Request) -> Dict[str, str]:
     """
     Webhook principal para receber eventos da Evolution API.
     """
@@ -42,7 +39,7 @@ async def webhook_evolution(request: Request):
         return {"status": "ignored event"}
 
     # Extrai os dados da mensagem
-    data = body.get("data", {})
+    data: Dict[str, Any] = body.get("data", {})
     message: Dict[str, Any] = data.get("message", {})
 
     # Identifica o remetente (remoteJid) ignorando self
@@ -66,7 +63,7 @@ async def webhook_evolution(request: Request):
     if "conversation" in message:
         text = message["conversation"]
     elif "extendedTextMessage" in message:
-        text = message["extendedTextMessage"].get("text", "")
+        text = message.get("extendedTextMessage", {}).get("text", "")
 
     if not text:
         logger.info("Nenhum texto extraído da mensagem")
@@ -74,17 +71,12 @@ async def webhook_evolution(request: Request):
 
     logger.info(f"Mensagem recebida de {remote_jid}: {text}")
 
-    # Processamento de IA (RAG) vs Pipeline MVP
-    # Aqui fazemos a integração com a nova arquitetura de IA
     try:
         # Busca contexto no RAG
-        context = await ai_service.get_context_from_db(text)
+        context: str = await ai_service.get_context_from_db(text)
 
         # Gera a resposta via Gemini
-        ai_response = await ai_service.generate_response(text, context)
-
-        # Opcionalmente, atualizar a lógica MVP para capturar as intenções de dados
-        # _ = await handle_message(remote_jid, text) # MVP states
+        ai_response: str = await ai_service.generate_response(text, context)
 
         # Envia de volta para o WhatsApp
         await whatsapp_service.send_message(remote_jid, ai_response)
@@ -93,4 +85,5 @@ async def webhook_evolution(request: Request):
 
     except Exception as e:
         logger.error(f"Erro ao processar a mensagem do webhook: {e}")
+        # Mesmo com erro, retornamos 200 pro webhook não ficar retentando
         return {"status": "error"}

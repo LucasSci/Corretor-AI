@@ -6,9 +6,9 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    def __init__(self):
-        self.base_url = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
-        self.api_key = settings.API_KEY_EVOLUTION
+    def __init__(self) -> None:
+        self.base_url: str = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
+        self.api_key: str = settings.API_KEY_EVOLUTION
 
     async def send_message(self, remote_jid: str, text: str) -> Optional[Dict[str, Any]]:
         if not self.base_url or not self.api_key:
@@ -16,14 +16,14 @@ class WhatsAppService:
             print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
-        endpoint = f"{self.base_url}/message/sendText"
-        headers = {
+        endpoint: str = f"{self.base_url}/message/sendText"
+        headers: Dict[str, str] = {
             "apikey": self.api_key,
             "Content-Type": "application/json"
         }
 
         # Evolution API v1.8 payload format com delay e presence
-        payload = {
+        payload: Dict[str, Any] = {
             "number": remote_jid,
             "options": {
                 "delay": 1500,
