@@ -1,5 +1,0 @@
-id,nome,bairro,tipo,preco,entrada_min,renda_min,fgts_aceita,mcmv
-1,Parque Orquídea,Campo Grande,Apartamento,220000,8000,2800,sim,sim
-2,Residencial Aurora,Jacarepaguá,Apartamento,280000,12000,3500,sim,sim
-3,Vila das Acácias,Recreio,Apartamento,420000,30000,6000,sim,nao
-4,Casa Verde,Campo Grande,Casa,260000,15000,4000,nao,sim
