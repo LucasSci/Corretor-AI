@@ -1,20 +1,13 @@
 import logging
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import google.generativeai as genai
 import chromadb
-
-# As per requirements, missing imports will be mocked during tests.
-# If they are available (e.g., prod), use them.
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
-except ImportError:
-    pass  # We assume missing dependencies might be mocked or we can use generic google.generativeai
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
+MASTER_PROMPT: str = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
 O teu tom de voz é 100% natural, empático, persuasivo e leve.
 REGRAS:
 - PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.
@@ -23,7 +16,7 @@ REGRAS:
 - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
+    def __init__(self) -> None:
         try:
             if settings.GEMINI_API_KEY:
                 genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -49,8 +42,6 @@ class AIService:
             return ""
 
         try:
-            # Em uma implementação real, usaríamos embeddings reais aqui
-            # Para simplificação, usamos a string diretamente se o ChromaDB suportar
             results = self.collection.query(
                 query_texts=[query],
                 n_results=settings.CHROMA_K
@@ -68,7 +59,7 @@ class AIService:
             return "Estou com um pouco de instabilidade no sistema agora, podemos falar mais tarde?"
 
         try:
-            prompt = user_message
+            prompt: str = user_message
             if context:
                 prompt = f"Informação relevante:\n{context}\n\nCliente: {user_message}"
 
