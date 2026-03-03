@@ -56,18 +56,6 @@ data/
 
 ### 6. Novas Funções Integradas
 
-#### 6.1 Visibilidade de Conhecimento
-
-Todas as rotinas de ingestão (e o método `add_training_data` da classe
-`IntelligenceCore`) aceitam um parâmetro booleano `public` que indica se o
-conteúdo deve estar disponível em respostas ao **cliente**. O valor padrão é
-`True`, mas ao marcar `public=False` você garante que o trecho será armazenado
-no vetor interno e nos logs de aprendizado, porém **não aparecerá** quando a
-busca for realizada com `client_visible=True` (comportamento usado pelo
-bot durante um atendimento). Essa medida evita que documentos internos,
-como manuais de equipe ou rascunhos, sejam acidentalmente expostos.
-
-
 #### 6.1 Limpeza de HTML
 ```python
 limpar_conteudo_html(html_content)
@@ -119,54 +107,6 @@ Cada linha do arquivo `data/base_conhecimento.jsonl` segue este padrão:
 }
 ```
 
-### 7.1 Configurando o Bot do WhatsApp
-
-O arquivo `app_whatsapp.py` contém o endpoint que recebe mensagens via webhook (originadas pela Evolution API ou outra similar).
-
-Variáveis de ambiente úteis:
-
-```bash
-# URL base da API (ex: http://localhost:8080 ou https://eu-api.evolution.com.br)
-export WHATSAPP_API_URL="http://localhost:8080"
-
-# Token ou chave API (pode ser "Bearer <token>" ou chave simples)
-export WHATSAPP_API_TOKEN="lucas_senha_123"
-
-# Número do WhatsApp associado ao bot (DDI+DDD+celular, sem sufixo). Usado
-# apenas para depuração/auto-teste.
-export WHATSAPP_BOT_NUMBER="551975907217"  # seu número real (para auto‑teste)
-
-# (Opcional) número substituto quando o pacote vier com @lid; útil ao
-# desenvolver com a interface interna da Evolution.
-export WHATSAPP_TEST_NUMBER="55219XXXXXXXX@s.whatsapp.net"
-
-# (Opcional) número de teste para converter @lid
-export WHATSAPP_TEST_NUMBER="55219XXXXXXXX@s.whatsapp.net"
-```
-
-**Como iniciar o servidor de desenvolvimento:**
-
-```powershell
-# dentro da virtualenv
-python -m uvicorn app_whatsapp:app --reload --port 8000
-```
-
-Isso expõe `/webhook` localmente. A API da Evolution deve ser configurada com esse endereço no campo de Webhook.
-
-**Simulando mensagens localmente:**
-
-Um pequeno script `simulate_webhook.py` gera payloads fictícios e os envia para o servidor. Execute:
-
-```powershell
-python simulate_webhook.py
-```
-
-Os logs no terminal mostrarão a mensagem recebida e qualquer tentativa de resposta. Você pode adaptar o JSON para cobrir outros formatos (Meta, Z-API, etc.).
-
-Quando o webhook processa corretamente, a IA é acionada via `bot_corretor.gerar_resposta_whatsapp` e a resposta retorna pela mesma API.
-
----
-
 ### 8. Integração com IA/RAG
 
 Uma vez que o arquivo JSONL estiver pronto, você pode:
@@ -198,31 +138,6 @@ collection = client.get_or_create_collection(name="riva_imoveis")
 # Indexar documents
 vectorstore = Chroma.from_documents(docs, embeddings, client=client)
 ```
-
-### 8.3 Fallback local (motor_busca.py)
-
-O arquivo `motor_busca.py` contém uma implementação que tenta usar `ChromaDB` quando disponível, mas também inclui um *fallback* local que permite rodar buscas sem dependências externas adicionais.
-
-- Com `chromadb` disponível: o script usa `chromadb.Client` e persiste usando DuckDB+Parquet em `./banco_vetorial_riva`.
-- Sem `chromadb` ou em caso de incompatibilidade (por exemplo, problemas de versão do `pydantic`), o script gera embeddings localmente com `sentence-transformers` e salva um armazenamento local persistente em `./banco_vetorial_riva/local_store.pkl`.
-
-Comandos úteis:
-```powershell
-# ativar venv
-& .\.venv\Scripts\Activate.ps1
-
-# instalar dependências principais
-pip install sentence-transformers
-pip install chromadb              # opcional — só se quiser usar ChromaDB
-
-# se houver erro relacionado ao pydantic (compatibilidade), instale uma versão compatível
-pip install "pydantic<2"
-```
-
-Observações:
-- O fallback local é suficiente para desenvolvimento e testes offline.
-- Se você planeja indexar grandes volumes ou usar features avançadas, recomenda-se configurar `ChromaDB` ou um serviço gerenciado como Pinecone/Weaviate.
-
 
 ### 9. Regras de Negócio e Segurança
 

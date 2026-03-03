@@ -266,8 +266,22 @@ async def receber_mensagem(request: Request, background_tasks: BackgroundTasks):
         _console_log(f"[WHATSAPP] Cliente {numero_log} diz: {texto_recebido}", "info")
 
         print(f"\n⏳ Aguarde... chamando BOT para gerar resposta...")
-        resposta_inteligente = gerar_resposta_whatsapp(texto_recebido, cliente_numero=numero_cliente)
-        _console_log(f"[BOT] Resposta gerada para {numero_log}: {resposta_inteligente}", "info")
+        resultado_bot = gerar_resposta_whatsapp(
+            texto_recebido,
+            cliente_numero=numero_cliente,
+            return_details=True,
+        )
+        if isinstance(resultado_bot, dict):
+            resposta_inteligente = resultado_bot.get("resposta", "")
+            modelo_usado = resultado_bot.get("modelo_usado", "desconhecido")
+        else:
+            resposta_inteligente = str(resultado_bot)
+            modelo_usado = "desconhecido"
+
+        _console_log(
+            f"[BOT] Resposta gerada para {numero_log} (modelo={modelo_usado}): {resposta_inteligente}",
+            "info",
+        )
         print(f"\n🤖 Resposta do BOT pronta!")
         
         # Registrar aprendizado
@@ -276,7 +290,7 @@ async def receber_mensagem(request: Request, background_tasks: BackgroundTasks):
             "cliente_numero": numero_cliente,
             "pergunta": texto_recebido,
             "resposta": resposta_inteligente,
-            "modelo_usado": "gemini"  # Padrão, pode ser atualizado conforme necessário
+            "modelo_usado": modelo_usado
         })
         
         print(f"\n📤 Agendando envio da mensagem..")

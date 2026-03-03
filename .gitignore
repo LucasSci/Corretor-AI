@@ -3,4 +3,14 @@ __pycache__/
 *.pyc
 *.db
 .env
+.lancedb/
+conhecimento_ia/memoria/
+conhecimento_ia/vetorial/
+conhecimento_ia/aprendizado/learning_log_*.jsonl
+data/raw/
+data/extracted/
+data/base_conhecimento*.jsonl
+data/base_conhecimento*.csv
+data/ingest_summary.json
+output.log
 

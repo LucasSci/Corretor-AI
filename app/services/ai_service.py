@@ -1,0 +1,86 @@
+import logging
+import sys
+from typing import Any, Dict, Optional
+
+try:
+    import google.genai as google_genai
+except Exception:
+    google_genai = None
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+MASTER_PROMPT = (
+    "Voce e um corretor de imoveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
+    "Seu tom deve ser natural, empatico e objetivo. "
+    "Use apenas dados do contexto quando houver, sem inventar informacoes."
+)
+
+
+class AIService:
+    def __init__(self):
+        self.model = None
+        self.chroma_client = None
+        self.collection = None
+
+        if settings.GEMINI_API_KEY and google_genai is not None:
+            try:
+                self.model = google_genai.Client(api_key=settings.GEMINI_API_KEY)
+            except Exception as exc:
+                logger.error("Erro ao inicializar cliente Gemini: %s", exc)
+                self.model = None
+
+        chromadb = None
+        if sys.version_info < (3, 14):
+            try:
+                import chromadb as chromadb_module
+                chromadb = chromadb_module
+            except Exception:
+                chromadb = None
+        else:
+            logger.info("ChromaDB desativado: Python 3.14+ ainda nao e suportado pelo pacote atual.")
+
+        if chromadb is not None:
+            try:
+                self.chroma_client = chromadb.PersistentClient(path="data/chroma_db")
+                self.collection = self.chroma_client.get_or_create_collection("riva_imoveis")
+            except Exception as exc:
+                logger.error("Erro ao inicializar ChromaDB: %s", exc)
+                self.collection = None
+
+    async def get_context_from_db(self, query: str) -> str:
+        if not self.collection:
+            return ""
+
+        try:
+            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
+            docs = results.get("documents", []) if isinstance(results, dict) else []
+            if docs and docs[0]:
+                return "\n".join(docs[0])
+            return ""
+        except Exception as exc:
+            logger.error("Erro ao buscar contexto no ChromaDB: %s", exc)
+            return ""
+
+    async def generate_response(self, user_message: str, context: str = "") -> str:
+        if not self.model:
+            return "Estou com instabilidade no sistema agora, podemos falar mais tarde?"
+
+        try:
+            prompt = user_message
+            if context:
+                prompt = f"Informacao relevante:\n{context}\n\nCliente: {user_message}"
+
+            response = self.model.models.generate_content(
+                model=settings.MODEL_NAME,
+                contents=f"{MASTER_PROMPT}\n\n{prompt}",
+            )
+            text = getattr(response, "text", "") or ""
+            return text.strip() or "Vou verificar essa informacao e ja te retorno!"
+        except Exception as exc:
+            logger.error("Erro ao gerar resposta no Gemini: %s", exc)
+            return "Vou verificar essa informacao e ja te retorno!"
+
+
+ai_service = AIService()
