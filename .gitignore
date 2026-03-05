@@ -14,3 +14,4 @@ data/base_conhecimento*.csv
 data/ingest_summary.json
 output.log
 
+data/
