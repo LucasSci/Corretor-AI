@@ -56,6 +56,7 @@ class WhatsAppService:
                 if response.status_code in [400, 404]:
                     print(f"❌ Erro Evolution API [{response.status_code}]: {response.text}")
                     logger.error(f"Erro Evolution API [{response.status_code}]: {response.text}")
+                    return None
 
                 response.raise_for_status()
                 return response.json()
