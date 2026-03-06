@@ -1,25 +1,32 @@
 import logging
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 try:
     import google.genai as google_genai
+    from google.genai import types
 except Exception:
     google_genai = None
+    types = None
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 MASTER_PROMPT = (
-    "Voce e um corretor de imoveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
-    "Seu tom deve ser natural, empatico e objetivo. "
-    "Use apenas dados do contexto quando houver, sem inventar informacoes."
+    "És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
+    "O teu tom de voz é 100% natural, empático, persuasivo e leve. "
+    "REGRAS:\n"
+    "- PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.\n"
+    "- ZERO ROBÓTICA: Nunca digas 'De acordo com os dados', 'Baseado no meu contexto' ou 'Como IA'.\n"
+    "- FLUIDEZ DE WHATSAPP: Escreve mensagens curtas. Não faças listas longas. Usa no máximo 1 a 2 emojis.\n"
+    "- FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: "
+    "'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"
 )
 
 
 class AIService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = None
         self.chroma_client = None
         self.collection = None
@@ -54,8 +61,9 @@ class AIService:
             return ""
 
         try:
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
-            docs = results.get("documents", []) if isinstance(results, dict) else []
+            # Requisito do usuario: k=4 (top 4 chunks)
+            results = self.collection.query(query_texts=[query], n_results=4)
+            docs: List[Any] = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
             return ""
@@ -65,22 +73,32 @@ class AIService:
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
         if not self.model:
-            return "Estou com instabilidade no sistema agora, podemos falar mais tarde?"
+            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar. Entretanto, como te posso ajudar?"
 
         try:
             prompt = user_message
             if context:
-                prompt = f"Informacao relevante:\n{context}\n\nCliente: {user_message}"
+                prompt = f"Informacao relevante da base de conhecimento (use apenas se pertinente, mas nao cite a base):\n{context}\n\nCliente diz: {user_message}"
+
+            # Pass config for temperature=0.6 and master prompt as system instruction if possible, or prepended
+            contents = f"{MASTER_PROMPT}\n\n{prompt}"
+
+            config = None
+            if types is not None:
+                config = types.GenerateContentConfig(
+                    temperature=0.6,
+                )
 
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
+                contents=contents,
+                config=config,
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "Vou verificar essa informacao e ja te retorno!"
+            return text.strip() or "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia."
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "Vou verificar essa informacao e ja te retorno!"
+            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a equipe e já te falo!"
 
 
 ai_service = AIService()
