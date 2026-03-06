@@ -1,19 +1,20 @@
 import logging
 import time
+import os
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.services.ai_service import ai_service
+from app.services.whatsapp_service import whatsapp_service
 
 try:
     from app.services.agent import handle_message
 except Exception:
     handle_message = None
 
-from app.services.ai_service import ai_service
-from app.services.whatsapp_service import whatsapp_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ _RECENT_OUTGOING: dict[tuple[str, str], float] = {}
 
 
 def _cleanup_recent_outgoing(now_ts: float) -> None:
-    ttl = max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
+    ttl: int = max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
     expired = [k for k, ts in _RECENT_OUTGOING.items() if (now_ts - ts) > ttl]
     for k in expired:
         _RECENT_OUTGOING.pop(k, None)
@@ -32,7 +33,7 @@ def _remember_outgoing(remote_jid: str, text: str) -> None:
     text = (text or "").strip()
     if not remote_jid or not text:
         return
-    now_ts = time.time()
+    now_ts: float = time.time()
     _cleanup_recent_outgoing(now_ts)
     _RECENT_OUTGOING[(remote_jid, text)] = now_ts
 
@@ -43,7 +44,7 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
     if not remote_jid or not text:
         return False
 
-    now_ts = time.time()
+    now_ts: float = time.time()
     _cleanup_recent_outgoing(now_ts)
     ts = _RECENT_OUTGOING.get((remote_jid, text))
     if ts is None:
@@ -163,12 +164,15 @@ async def webhook_evolution(request: Request):
         return {"status": "ignored no remoteJid"}
 
     if "@lid" in remote_jid:
+        logger.info("ID interno detectado (@lid), redirecionando para teste se aplicavel.")
         if settings.WHATSAPP_TEST_NUMBER:
-            logger.info("Bypass @lid ativo. Redirecionando para %s", settings.WHATSAPP_TEST_NUMBER)
             remote_jid = settings.WHATSAPP_TEST_NUMBER
         else:
-            logger.info("Bypass @lid sem numero de teste: %s", remote_jid)
             return {"status": "ignored @lid bypass"}
+
+    if "@g.us" in remote_jid or "status@broadcast" in remote_jid:
+        logger.info("Mensagem de grupo ou status ignorada: %s", remote_jid)
+        return {"status": "ignored group or status"}
 
     text = _extract_text(body, ctx.get("message", {}))
     if not text:
