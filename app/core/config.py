@@ -21,23 +21,20 @@ DEFAULT_APP_NAME = os.getenv("APP_NAME", "CorretorIA")
 DEFAULT_DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///./data/app.db")
 DEFAULT_MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
 
-# Compatibilidade com nomes antigos e valores locais do projeto.
+# Sem credenciais hardcoded, preferindo sempre carregar do ambiente
 DEFAULT_URL_EVOLUTION = (
     os.getenv("URL_EVOLUTION")
-    or os.getenv("WHATSAPP_API_URL")
-    or "http://localhost:8080"
+    or os.getenv("WHATSAPP_API_URL", "")
 )
 DEFAULT_API_KEY_EVOLUTION = (
     os.getenv("API_KEY_EVOLUTION")
     or os.getenv("WHATSAPP_API_TOKEN")
-    or os.getenv("WHATSAPP_API_KEY")
-    or "lucas_senha_123"
+    or os.getenv("WHATSAPP_API_KEY", "")
 )
 DEFAULT_EVOLUTION_INSTANCE = (
     os.getenv("EVOLUTION_INSTANCE")
     or os.getenv("WHATSAPP_INSTANCE")
-    or os.getenv("INSTANCIA")
-    or "BotRiva1"
+    or os.getenv("INSTANCIA", "")
 )
 DEFAULT_ALLOW_FROM_ME_TEST = _env_bool("ALLOW_FROM_ME_TEST", True)
 DEFAULT_WEBHOOK_LOOP_GUARD_TTL_SEC = int(os.getenv("WEBHOOK_LOOP_GUARD_TTL_SEC", "30"))

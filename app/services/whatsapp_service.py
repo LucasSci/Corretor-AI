@@ -6,7 +6,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.base_url = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
         self.api_key = settings.API_KEY_EVOLUTION
         self.instance = settings.EVOLUTION_INSTANCE
@@ -31,11 +31,10 @@ class WhatsAppService:
             return None
 
         endpoint = f"{self.base_url}/message/sendText/{self.instance}"
-        headers = {"Content-Type": "application/json"}
-        if self.api_key.lower().startswith("bearer "):
-            headers["Authorization"] = self.api_key
-        else:
-            headers["apikey"] = self.api_key
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": self.api_key
+        }
 
         # Evolution API v1.8 payload format com delay e presence
         payload = {
@@ -54,22 +53,26 @@ class WhatsAppService:
                 response = await client.post(endpoint, json=payload, headers=headers, timeout=10)
 
                 if response.status_code in [400, 404]:
-                    print(f"❌ Erro Evolution API [{response.status_code}]: {response.text}")
-                    logger.error(f"Erro Evolution API [{response.status_code}]: {response.text}")
+                    error_msg = f"❌ Erro Evolution API [{response.status_code}]: {response.text}"
+                    print(error_msg)
+                    logger.error(error_msg)
 
                 response.raise_for_status()
                 return response.json()
         except httpx.RequestError as e:
-            print(f"❌ Erro de conexão com a Evolution API: {e}")
-            logger.error(f"Erro de conexão com a Evolution API: {e}")
+            error_msg = f"❌ Erro de conexão com a Evolution API: {e}"
+            print(error_msg)
+            logger.error(error_msg)
             return None
         except httpx.HTTPStatusError as e:
-            print(f"❌ Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}")
+            error_msg = f"❌ Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}"
+            print(error_msg)
             logger.error(f"Erro HTTP da Evolution API: {e.response.status_code}")
             return None
         except Exception as e:
-            print(f"❌ Erro inesperado ao enviar mensagem WhatsApp: {e}")
-            logger.error(f"Erro inesperado ao enviar mensagem WhatsApp: {e}")
+            error_msg = f"❌ Erro inesperado ao enviar mensagem WhatsApp: {e}"
+            print(error_msg)
+            logger.error(error_msg)
             return None
 
 whatsapp_service = WhatsAppService()

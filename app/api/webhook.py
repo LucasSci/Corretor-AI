@@ -17,7 +17,7 @@ from app.services.whatsapp_service import whatsapp_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-_RECENT_OUTGOING: dict[tuple[str, str], float] = {}
+_RECENT_OUTGOING: Dict[tuple[str, str], float] = {}
 
 
 def _cleanup_recent_outgoing(now_ts: float) -> None:
@@ -134,7 +134,7 @@ class MessageIn(BaseModel):
 
 
 @router.post("/chat")
-async def chat(payload: MessageIn):
+async def chat(payload: MessageIn) -> Dict[str, Any]:
     if handle_message is None:
         raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
 
@@ -143,7 +143,7 @@ async def chat(payload: MessageIn):
 
 
 @router.post("/webhook")
-async def webhook_evolution(request: Request):
+async def webhook_evolution(request: Request) -> Dict[str, Any]:
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:
