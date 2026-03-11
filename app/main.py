@@ -40,6 +40,9 @@ except ModuleNotFoundError as exc:
 if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+
 try:
     from app.db.init_db import init_db
 except Exception as exc:
@@ -55,7 +58,16 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
+app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+
+# Setup CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS if settings.CORS_ORIGINS else [],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 async def health():
