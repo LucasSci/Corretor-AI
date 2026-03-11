@@ -4,22 +4,26 @@ from typing import Any, Dict, Optional
 
 try:
     import google.genai as google_genai
-except Exception:
+    from google.genai.types import GenerateContentConfig
+except ImportError:
     google_genai = None
+    GenerateContentConfig = None
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-MASTER_PROMPT = (
-    "Voce e um corretor de imoveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
-    "Seu tom deve ser natural, empatico e objetivo. "
-    "Use apenas dados do contexto quando houver, sem inventar informacoes."
-)
-
+MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
+O teu tom de voz é 100% natural, empático, persuasivo e leve.
+REGRAS:
+- PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.
+- ZERO ROBÓTICA: Nunca digas 'De acordo com os dados', 'Baseado no meu contexto' ou 'Como IA'.
+- FLUIDEZ DE WHATSAPP: Escreve mensagens curtas. Não faças listas longas. Usa no máximo 1 a 2 emojis.
+- FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'
+"""
 
 class AIService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = None
         self.chroma_client = None
         self.collection = None
@@ -36,10 +40,10 @@ class AIService:
             try:
                 import chromadb as chromadb_module
                 chromadb = chromadb_module
-            except Exception:
+            except ImportError:
                 chromadb = None
         else:
-            logger.info("ChromaDB desativado: Python 3.14+ ainda nao e suportado pelo pacote atual.")
+            logger.info("ChromaDB desativado: Python 3.14+ ainda não é suportado pelo pacote atual.")
 
         if chromadb is not None:
             try:
@@ -70,17 +74,32 @@ class AIService:
         try:
             prompt = user_message
             if context:
-                prompt = f"Informacao relevante:\n{context}\n\nCliente: {user_message}"
+                prompt = f"Informação relevante:\n{context}\n\nCliente: {user_message}"
 
-            response = self.model.models.generate_content(
-                model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
-            )
-            text = getattr(response, "text", "") or ""
-            return text.strip() or "Vou verificar essa informacao e ja te retorno!"
+            config = None
+            if GenerateContentConfig is not None:
+                config = GenerateContentConfig(
+                    temperature=settings.AI_TEMPERATURE,
+                    system_instruction=MASTER_PROMPT
+                )
+
+            # Fallback if config isn't correctly structured
+            if config:
+                response = self.model.models.generate_content(
+                    model=settings.MODEL_NAME,
+                    contents=prompt,
+                    config=config
+                )
+            else:
+                response = self.model.models.generate_content(
+                    model=settings.MODEL_NAME,
+                    contents=f"{MASTER_PROMPT}\n\n{prompt}",
+                )
+
+            text: str = getattr(response, "text", "") or ""
+            return text.strip() or "Vou verificar essa informação e já te retorno!"
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "Vou verificar essa informacao e ja te retorno!"
-
+            return "Vou verificar essa informação e já te retorno!"
 
 ai_service = AIService()
