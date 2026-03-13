@@ -5,7 +5,7 @@ load_dotenv()
 
 try:
     from pydantic_settings import BaseSettings, SettingsConfigDict
-except Exception:
+except ImportError:
     BaseSettings = object
     SettingsConfigDict = None
 
@@ -19,9 +19,8 @@ def _env_bool(name: str, default: bool) -> bool:
 
 DEFAULT_APP_NAME = os.getenv("APP_NAME", "CorretorIA")
 DEFAULT_DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///./data/app.db")
-DEFAULT_MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
+DEFAULT_MODEL_NAME = os.getenv("MODEL_NAME", "gemini-1.5-pro")
 
-# Compatibilidade com nomes antigos e valores locais do projeto.
 DEFAULT_URL_EVOLUTION = (
     os.getenv("URL_EVOLUTION")
     or os.getenv("WHATSAPP_API_URL")
