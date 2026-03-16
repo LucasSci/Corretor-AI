@@ -134,21 +134,27 @@ class MessageIn(BaseModel):
 
 
 @router.post("/chat")
-async def chat(payload: MessageIn):
-    if handle_message is None:
-        raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
+async def chat(payload: MessageIn) -> Dict[str, Any]:
+    try:
+        if handle_message is None:
+            raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
 
-    result = await handle_message(payload.contact_id, payload.text)
-    return {"contact_id": payload.contact_id, **result}
+        result = await handle_message(payload.contact_id, payload.text)
+        return {"contact_id": payload.contact_id, **result}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Erro no chat: %s", exc)
+        return {"status": "error"}
 
 
 @router.post("/webhook")
-async def webhook_evolution(request: Request):
+async def webhook_evolution(request: Request) -> Dict[str, Any]:
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:
         logger.error("Erro ao parsear JSON do webhook: %s", exc)
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        return {"status": "error"}
 
     event_raw = str(body.get("event", "")).strip()
     event_norm = event_raw.lower().replace("_", ".")

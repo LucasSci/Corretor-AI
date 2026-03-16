@@ -1,20 +1,27 @@
+import asyncio
 import logging
 import sys
 from typing import Any, Dict, Optional
 
 try:
     import google.genai as google_genai
+    from google.genai import types
 except Exception:
     google_genai = None
+    types = None
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 MASTER_PROMPT = (
-    "Voce e um corretor de imoveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
-    "Seu tom deve ser natural, empatico e objetivo. "
-    "Use apenas dados do contexto quando houver, sem inventar informacoes."
+    "És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. \n"
+    "O teu tom de voz é 100% natural, empático, persuasivo e leve.  \n"
+    "REGRAS: \n"
+    "- PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial. \n"
+    "- ZERO ROBÓTICA: Nunca digas 'De acordo com os dados', 'Baseado no meu contexto' ou 'Como IA'. \n"
+    "- FLUIDEZ DE WHATSAPP: Escreve mensagens curtas. Não faças listas longas. Usa no máximo 1 a 2 emojis. \n"
+    "- FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"
 )
 
 
@@ -72,10 +79,18 @@ class AIService:
             if context:
                 prompt = f"Informacao relevante:\n{context}\n\nCliente: {user_message}"
 
-            response = self.model.models.generate_content(
-                model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
-            )
+            config = None
+            if types:
+                config = types.GenerateContentConfig(temperature=settings.AI_TEMPERATURE)
+
+            def _sync_call():
+                return self.model.models.generate_content(
+                    model=settings.MODEL_NAME,
+                    contents=f"{MASTER_PROMPT}\n\n{prompt}",
+                    config=config
+                )
+
+            response = await asyncio.to_thread(_sync_call)
             text = getattr(response, "text", "") or ""
             return text.strip() or "Vou verificar essa informacao e ja te retorno!"
         except Exception as exc:
