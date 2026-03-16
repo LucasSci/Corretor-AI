@@ -75,7 +75,7 @@ else:
         URL_EVOLUTION: str = DEFAULT_URL_EVOLUTION
         API_KEY_EVOLUTION: str = DEFAULT_API_KEY_EVOLUTION
         EVOLUTION_INSTANCE: str = DEFAULT_EVOLUTION_INSTANCE
-        GEMINI_API_KEY: str = ""
+        GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
         AI_TEMPERATURE: float = 0.6
         CHROMA_K: int = 4

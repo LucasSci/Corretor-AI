@@ -31,11 +31,10 @@ class WhatsAppService:
             return None
 
         endpoint = f"{self.base_url}/message/sendText/{self.instance}"
-        headers = {"Content-Type": "application/json"}
-        if self.api_key.lower().startswith("bearer "):
-            headers["Authorization"] = self.api_key
-        else:
-            headers["apikey"] = self.api_key
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": self.api_key
+        }
 
         # Evolution API v1.8 payload format com delay e presence
         payload = {
