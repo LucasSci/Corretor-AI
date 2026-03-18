@@ -1,10 +1,12 @@
 import logging
 import sys
+import asyncio
 from typing import Any, Dict, Optional
 
 try:
     import google.genai as google_genai
-except Exception:
+    from google.genai import types
+except ImportError:
     google_genai = None
 
 from app.core.config import settings
@@ -12,17 +14,22 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 MASTER_PROMPT = (
-    "Voce e um corretor de imoveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
-    "Seu tom deve ser natural, empatico e objetivo. "
-    "Use apenas dados do contexto quando houver, sem inventar informacoes."
+    "És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp. "
+    "O teu tom de voz é 100% natural, empático, persuasivo e leve. "
+    "REGRAS: "
+    "- PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial. "
+    "- ZERO ROBÓTICA: Nunca digas 'De acordo com os dados', 'Baseado no meu contexto' ou 'Como IA'. "
+    "- FLUIDEZ DE WHATSAPP: Escreve mensagens curtas. Não faças listas longas. Usa no máximo 1 a 2 emojis. "
+    "- FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: "
+    "'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"
 )
 
 
 class AIService:
-    def __init__(self):
-        self.model = None
-        self.chroma_client = None
-        self.collection = None
+    def __init__(self) -> None:
+        self.model: Any = None
+        self.chroma_client: Any = None
+        self.collection: Any = None
 
         if settings.GEMINI_API_KEY and google_genai is not None:
             try:
@@ -31,15 +38,15 @@ class AIService:
                 logger.error("Erro ao inicializar cliente Gemini: %s", exc)
                 self.model = None
 
-        chromadb = None
+        chromadb: Any = None
         if sys.version_info < (3, 14):
             try:
                 import chromadb as chromadb_module
                 chromadb = chromadb_module
-            except Exception:
+            except ImportError:
                 chromadb = None
         else:
-            logger.info("ChromaDB desativado: Python 3.14+ ainda nao e suportado pelo pacote atual.")
+            logger.info("ChromaDB desativado: Python 3.14+ ainda não é suportado pelo pacote atual.")
 
         if chromadb is not None:
             try:
@@ -54,7 +61,12 @@ class AIService:
             return ""
 
         try:
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
+            # Wrap synchronous chroma call in to_thread
+            results = await asyncio.to_thread(
+                self.collection.query,
+                query_texts=[query],
+                n_results=settings.CHROMA_K
+            )
             docs = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
@@ -68,19 +80,26 @@ class AIService:
             return "Estou com instabilidade no sistema agora, podemos falar mais tarde?"
 
         try:
-            prompt = user_message
+            prompt: str = user_message
             if context:
-                prompt = f"Informacao relevante:\n{context}\n\nCliente: {user_message}"
+                prompt = f"Informação relevante:\n{context}\n\nCliente: {user_message}"
 
-            response = self.model.models.generate_content(
+            contents = f"{MASTER_PROMPT}\n\n{prompt}"
+
+            # Use asyncio.to_thread for the synchronous generation call
+            response = await asyncio.to_thread(
+                self.model.models.generate_content,
                 model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    temperature=settings.AI_TEMPERATURE,
+                )
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "Vou verificar essa informacao e ja te retorno!"
+            return text.strip() or "Vou verificar essa informação e já te retorno!"
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "Vou verificar essa informacao e ja te retorno!"
+            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Já te retorno!"
 
 
 ai_service = AIService()

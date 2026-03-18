@@ -1,31 +1,25 @@
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
 
-try:
-    from app.services.agent import handle_message
-except Exception:
-    handle_message = None
-
 from app.services.ai_service import ai_service
 from app.services.whatsapp_service import whatsapp_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-_RECENT_OUTGOING: dict[tuple[str, str], float] = {}
 
+_RECENT_OUTGOING: Dict[Tuple[str, str], float] = {}
 
 def _cleanup_recent_outgoing(now_ts: float) -> None:
     ttl = max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
     expired = [k for k, ts in _RECENT_OUTGOING.items() if (now_ts - ts) > ttl]
     for k in expired:
         _RECENT_OUTGOING.pop(k, None)
-
 
 def _remember_outgoing(remote_jid: str, text: str) -> None:
     remote_jid = (remote_jid or "").strip()
@@ -35,7 +29,6 @@ def _remember_outgoing(remote_jid: str, text: str) -> None:
     now_ts = time.time()
     _cleanup_recent_outgoing(now_ts)
     _RECENT_OUTGOING[(remote_jid, text)] = now_ts
-
 
 def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
     remote_jid = (remote_jid or "").strip()
@@ -49,7 +42,6 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
     if ts is None:
         return False
     return (now_ts - ts) <= max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
-
 
 def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
@@ -105,7 +97,6 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
         "from_me": from_me,
     }
 
-
 def _extract_text(payload: Dict[str, Any], message_obj: Dict[str, Any]) -> str:
     text = ""
 
@@ -126,21 +117,6 @@ def _extract_text(payload: Dict[str, Any], message_obj: Dict[str, Any]) -> str:
         text = payload["body"]
 
     return text.strip()
-
-
-class MessageIn(BaseModel):
-    contact_id: str = Field(..., max_length=80)
-    text: str = Field(..., max_length=1000)
-
-
-@router.post("/chat")
-async def chat(payload: MessageIn):
-    if handle_message is None:
-        raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
-
-    result = await handle_message(payload.contact_id, payload.text)
-    return {"contact_id": payload.contact_id, **result}
-
 
 @router.post("/webhook")
 async def webhook_evolution(request: Request):

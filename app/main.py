@@ -4,15 +4,13 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# Evita quebra comum ao rodar com Python fora da venv do projeto.
 def _bootstrap_local_venv() -> None:
     project_root = Path(__file__).resolve().parent.parent
     candidates = [
-        project_root / ".venv" / "Lib" / "site-packages",  # Windows venv
-        project_root / "venv" / "Lib" / "site-packages",   # Windows alt name
+        project_root / ".venv" / "Lib" / "site-packages",
+        project_root / "venv" / "Lib" / "site-packages",
     ]
 
-    # Linux/macOS venv layout
     for py_site in (project_root / ".venv" / "lib").glob("python*/site-packages"):
         candidates.append(py_site)
     for py_site in (project_root / "venv" / "lib").glob("python*/site-packages"):
@@ -24,29 +22,30 @@ def _bootstrap_local_venv() -> None:
             if site_path not in sys.path:
                 sys.path.insert(0, site_path)
 
-
 _bootstrap_local_venv()
 
 try:
     from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
         "Dependencias ausentes: FastAPI nao encontrado. "
         "Ative a venv do projeto ou execute: "
-        r".\.venv\Scripts\python.exe -m pip install -r requirements.txt"
+        r"python3 -m pip install -r requirements.txt"
     ) from exc
 
-# Permite executar via `python app/main.py` sem quebrar imports absolutos `from app...`.
 if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.core.config import settings
 
 try:
     from app.db.init_db import init_db
 except Exception as exc:
     init_db = None
     logging.getLogger(__name__).warning("Banco indisponivel no startup: %s", exc)
-from app.api.webhook import router as webhook_router
 
+from app.api.webhook import router as webhook_router
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -54,8 +53,15 @@ async def lifespan(_: FastAPI):
         await init_db()
     yield
 
+app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 
-app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 async def health():
@@ -63,10 +69,9 @@ async def health():
 
 @app.get("/")
 async def root():
-    return {"name": "CorretorIA", "status": "running", "docs": "/docs"}
+    return {"name": settings.APP_NAME, "status": "running", "docs": "/docs"}
 
 app.include_router(webhook_router)
-
 
 if __name__ == "__main__":
     try:
@@ -75,7 +80,7 @@ if __name__ == "__main__":
         raise ModuleNotFoundError(
             "Dependencias ausentes: uvicorn nao encontrado. "
             "Ative a venv do projeto ou execute: "
-            r".\.venv\Scripts\python.exe -m pip install -r requirements.txt"
+            r"python3 -m pip install -r requirements.txt"
         ) from exc
 
     uvicorn.run(

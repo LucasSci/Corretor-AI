@@ -6,10 +6,10 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    def __init__(self):
-        self.base_url = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
-        self.api_key = settings.API_KEY_EVOLUTION
-        self.instance = settings.EVOLUTION_INSTANCE
+    def __init__(self) -> None:
+        self.base_url: str = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
+        self.api_key: str = settings.API_KEY_EVOLUTION
+        self.instance: str = settings.EVOLUTION_INSTANCE
 
     @staticmethod
     def _normalize_remote_jid(remote_jid: str) -> str:
@@ -30,18 +30,17 @@ class WhatsAppService:
             print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
-        endpoint = f"{self.base_url}/message/sendText/{self.instance}"
-        headers = {"Content-Type": "application/json"}
-        if self.api_key.lower().startswith("bearer "):
-            headers["Authorization"] = self.api_key
-        else:
-            headers["apikey"] = self.api_key
+        endpoint: str = f"{self.base_url}/message/sendText/{self.instance}"
+        headers: Dict[str, str] = {
+            "Content-Type": "application/json",
+            "apikey": self.api_key
+        }
 
-        # Evolution API v1.8 payload format com delay e presence
-        payload = {
+        # Evolution API v1.8 payload format with delay and presence: composing
+        payload: Dict[str, Any] = {
             "number": self._normalize_remote_jid(remote_jid),
             "options": {
-                "delay": 1500,
+                "delay": 1200,
                 "presence": "composing"
             },
             "textMessage": {
@@ -51,25 +50,25 @@ class WhatsAppService:
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(endpoint, json=payload, headers=headers, timeout=10)
+                response = await client.post(endpoint, json=payload, headers=headers, timeout=15)
 
-                if response.status_code in [400, 404]:
+                if response.status_code in (400, 404):
+                    logger.error("Erro Evolution API [%s]: %s | Payload: %s", response.status_code, response.text, payload)
                     print(f"❌ Erro Evolution API [{response.status_code}]: {response.text}")
-                    logger.error(f"Erro Evolution API [{response.status_code}]: {response.text}")
 
                 response.raise_for_status()
                 return response.json()
         except httpx.RequestError as e:
+            logger.error("Erro de conexão com a Evolution API: %s", e)
             print(f"❌ Erro de conexão com a Evolution API: {e}")
-            logger.error(f"Erro de conexão com a Evolution API: {e}")
             return None
         except httpx.HTTPStatusError as e:
+            logger.error("Erro HTTP da Evolution API: %s - %s", e.response.status_code, e.response.text)
             print(f"❌ Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}")
-            logger.error(f"Erro HTTP da Evolution API: {e.response.status_code}")
             return None
         except Exception as e:
+            logger.error("Erro inesperado ao enviar mensagem WhatsApp: %s", e)
             print(f"❌ Erro inesperado ao enviar mensagem WhatsApp: {e}")
-            logger.error(f"Erro inesperado ao enviar mensagem WhatsApp: {e}")
             return None
 
 whatsapp_service = WhatsAppService()
