@@ -52,7 +52,7 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
 
 
 def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data: Dict[str, Any] = payload.get("data") if isinstance(payload.get("data"), dict) else {}
 
     key_obj: Dict[str, Any] = {}
     message_obj: Dict[str, Any] = {}
@@ -79,7 +79,7 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
                 message_obj = {"text": first["text"]}
             key_obj = first.get("key", {}) if isinstance(first.get("key"), dict) else {}
 
-    remote_jid = None
+    remote_jid: Any = None
     if isinstance(data.get("key"), dict):
         remote_jid = data["key"].get("remoteJid")
     if not remote_jid and isinstance(key_obj, dict):
@@ -107,7 +107,7 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _extract_text(payload: Dict[str, Any], message_obj: Dict[str, Any]) -> str:
-    text = ""
+    text: str = ""
 
     if "conversation" in message_obj and isinstance(message_obj.get("conversation"), str):
         text = message_obj["conversation"]
@@ -134,7 +134,7 @@ class MessageIn(BaseModel):
 
 
 @router.post("/chat")
-async def chat(payload: MessageIn):
+async def chat(payload: MessageIn) -> Dict[str, Any]:
     if handle_message is None:
         raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
 
@@ -143,7 +143,7 @@ async def chat(payload: MessageIn):
 
 
 @router.post("/webhook")
-async def webhook_evolution(request: Request):
+async def webhook_evolution(request: Request) -> Dict[str, Any]:
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:
@@ -194,4 +194,5 @@ async def webhook_evolution(request: Request):
         return {"status": "processed", "reply": ai_response}
     except Exception as exc:
         logger.error("Erro ao processar a mensagem do webhook: %s", exc)
-        return {"status": "error"}
+        # We don't want to crash the FastApi server nor give 500 when it's an external API failing in a webhook context.
+        return {"status": "error", "message": "Failed to process message"}
