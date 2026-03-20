@@ -1,5 +1,6 @@
 import logging
 import sys
+import asyncio
 from typing import Any, Dict, Optional
 
 try:
@@ -11,9 +12,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-import asyncio
-
-MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
+MASTER_PROMPT: str = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
 O teu tom de voz é 100% natural, empático, persuasivo e leve.
 REGRAS:
 - PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.
@@ -22,10 +21,10 @@ REGRAS:
 - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
-        self.model = None
-        self.chroma_client = None
-        self.collection = None
+    def __init__(self) -> None:
+        self.model: Any = None
+        self.chroma_client: Any = None
+        self.collection: Any = None
 
         if settings.GEMINI_API_KEY and google_genai is not None:
             try:
@@ -34,7 +33,7 @@ class AIService:
                 logger.error("Erro ao inicializar cliente Gemini: %s", exc)
                 self.model = None
 
-        chromadb = None
+        chromadb: Any = None
         if sys.version_info < (3, 14):
             try:
                 import chromadb as chromadb_module
@@ -66,30 +65,40 @@ class AIService:
             return ""
 
     async def get_context_from_db(self, query: str) -> str:
-        return await asyncio.to_thread(self._query_chroma, query)
+        try:
+            return await asyncio.to_thread(self._query_chroma, query)
+        except Exception as exc:
+            logger.error("Erro assincrono no ChromaDB: %s", exc)
+            return ""
 
     def _generate_content_sync(self, prompt: str) -> str:
         try:
+            if not self.model:
+                return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
                 contents=f"{MASTER_PROMPT}\n\n{prompt}",
                 config={"temperature": settings.AI_TEMPERATURE}
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return text.strip() or "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
         if not self.model:
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
-        prompt = user_message
+        prompt: str = user_message
         if context:
             prompt = f"Informacao relevante na memoria (NÃO COPIE EXATAMENTE):\n{context}\n\nCliente: {user_message}"
 
-        return await asyncio.to_thread(self._generate_content_sync, prompt)
+        try:
+            return await asyncio.to_thread(self._generate_content_sync, prompt)
+        except Exception as exc:
+            logger.error("Erro assincrono ao gerar resposta no Gemini: %s", exc)
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
 
 ai_service = AIService()
