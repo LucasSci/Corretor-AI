@@ -82,6 +82,7 @@ class AIService:
             return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
+        """Gera resposta baseada no RAG do ChromaDB e Gemini."""
         if not self.model:
             return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
