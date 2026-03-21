@@ -20,6 +20,7 @@ class WhatsAppService:
         return remote_jid
 
     async def send_message(self, remote_jid: str, text: str) -> Optional[Dict[str, Any]]:
+        """Envia mensagem WhatsApp via Evolution API v1.8"""
         if not self.base_url or not self.api_key:
             logger.warning("Credenciais da Evolution API ausentes. Simulando envio no console.")
             print(f"[{remote_jid}] WhatsApp Bot: {text}")
