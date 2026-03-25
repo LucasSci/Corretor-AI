@@ -58,11 +58,11 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
 
 @app.get("/health")
-async def health():
+async def health() -> dict:
     return {"ok": True}
 
 @app.get("/")
-async def root():
+async def root() -> dict:
     return {"name": "CorretorIA", "status": "running", "docs": "/docs"}
 
 app.include_router(webhook_router)
