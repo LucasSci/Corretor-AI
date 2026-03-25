@@ -6,7 +6,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.base_url = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
         self.api_key = settings.API_KEY_EVOLUTION
         self.instance = settings.EVOLUTION_INSTANCE
@@ -52,7 +52,13 @@ class WhatsAppService:
             async with httpx.AsyncClient() as client:
                 response = await client.post(endpoint, json=payload, headers=headers, timeout=10)
 
-                if response.status_code in [400, 404]:
+                if response.status_code == 400:
+                    print(f"❌ Erro 400 Evolution API - Bad Request. Verifique o payload ou os headers: {response.text}")
+                    logger.error(f"Erro 400 Evolution API - Bad Request: {response.text}")
+                elif response.status_code == 404:
+                    print(f"❌ Erro 404 Evolution API - Not Found. A instância {self.instance} pode não existir ou a URL está errada: {response.text}")
+                    logger.error(f"Erro 404 Evolution API - Not Found: {response.text}")
+                elif response.status_code >= 400:
                     print(f"❌ Erro Evolution API [{response.status_code}]: {response.text}")
                     logger.error(f"Erro Evolution API [{response.status_code}]: {response.text}")
 
@@ -64,7 +70,7 @@ class WhatsAppService:
             return None
         except httpx.HTTPStatusError as e:
             print(f"❌ Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}")
-            logger.error(f"Erro HTTP da Evolution API: {e.response.status_code}")
+            logger.error(f"Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
             print(f"❌ Erro inesperado ao enviar mensagem WhatsApp: {e}")

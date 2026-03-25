@@ -22,7 +22,7 @@ REGRAS:
 - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = None
         self.chroma_client = None
         self.collection = None
@@ -66,7 +66,11 @@ class AIService:
             return ""
 
     async def get_context_from_db(self, query: str) -> str:
-        return await asyncio.to_thread(self._query_chroma, query)
+        try:
+            return await asyncio.to_thread(self._query_chroma, query)
+        except Exception as exc:
+            logger.error("Erro no get_context_from_db: %s", exc)
+            return ""
 
     def _generate_content_sync(self, prompt: str) -> str:
         try:
@@ -76,20 +80,24 @@ class AIService:
                 config={"temperature": settings.AI_TEMPERATURE}
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return text.strip() or "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
         if not self.model:
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
         prompt = user_message
         if context:
             prompt = f"Informacao relevante na memoria (NÃO COPIE EXATAMENTE):\n{context}\n\nCliente: {user_message}"
 
-        return await asyncio.to_thread(self._generate_content_sync, prompt)
+        try:
+            return await asyncio.to_thread(self._generate_content_sync, prompt)
+        except Exception as exc:
+            logger.error("Erro na thread do generate_response: %s", exc)
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
 
 ai_service = AIService()

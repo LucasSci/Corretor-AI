@@ -134,7 +134,7 @@ class MessageIn(BaseModel):
 
 
 @router.post("/chat")
-async def chat(payload: MessageIn):
+async def chat(payload: MessageIn) -> dict:
     if handle_message is None:
         raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
 
@@ -143,7 +143,7 @@ async def chat(payload: MessageIn):
 
 
 @router.post("/webhook")
-async def webhook_evolution(request: Request):
+async def webhook_evolution(request: Request) -> dict:
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:
