@@ -22,7 +22,7 @@ REGRAS:
 - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.model = None
         self.chroma_client = None
         self.collection = None

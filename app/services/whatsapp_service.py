@@ -6,7 +6,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.base_url = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
         self.api_key = settings.API_KEY_EVOLUTION
         self.instance = settings.EVOLUTION_INSTANCE
