@@ -1,4 +1,4 @@
-from extract import chunk_text
+from scripts.extract_root import chunk_text
 
 def test_chunk_text_empty_string():
     """Test that an empty string returns an empty list."""
