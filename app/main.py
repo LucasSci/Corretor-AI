@@ -49,20 +49,20 @@ from app.api.webhook import router as webhook_router
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI): # type: ignore
     if init_db is not None:
         await init_db()
     yield
 
 
-app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
+app: FastAPI = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, bool]:
     return {"ok": True}
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"name": "CorretorIA", "status": "running", "docs": "/docs"}
 
 app.include_router(webhook_router)

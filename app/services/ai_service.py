@@ -14,18 +14,18 @@ logger = logging.getLogger(__name__)
 import asyncio
 
 MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
-O teu tom de voz é 100% natural, empático, persuasivo e leve.
-REGRAS:
-- PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.
-- ZERO ROBÓTICA: Nunca digas 'De acordo com os dados', 'Baseado no meu contexto' ou 'Como IA'.
-- FLUIDEZ DE WHATSAPP: Escreve mensagens curtas. Não faças listas longas. Usa no máximo 1 a 2 emojis.
-- FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
+   O teu tom de voz é 100% natural, empático, persuasivo e leve.
+   REGRAS:
+   - PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.
+   - ZERO ROBÓTICA: Nunca digas 'De acordo com os dados', 'Baseado no meu contexto' ou 'Como IA'.
+   - FLUIDEZ DE WHATSAPP: Escreve mensagens curtas. Não faças listas longas. Usa no máximo 1 a 2 emojis.
+   - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
-        self.model = None
-        self.chroma_client = None
-        self.collection = None
+    def __init__(self) -> None:
+        self.model: Optional[Any] = None
+        self.chroma_client: Optional[Any] = None
+        self.collection: Optional[Any] = None
 
         if settings.GEMINI_API_KEY and google_genai is not None:
             try:
@@ -56,7 +56,7 @@ class AIService:
         if not self.collection:
             return ""
         try:
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
+            results = self.collection.query(query_texts=[query], n_results=4)
             docs = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
@@ -73,23 +73,27 @@ class AIService:
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
                 contents=f"{MASTER_PROMPT}\n\n{prompt}",
-                config={"temperature": settings.AI_TEMPERATURE}
+                config={"temperature": 0.6}
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return text.strip() or "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
         if not self.model:
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
         prompt = user_message
         if context:
             prompt = f"Informacao relevante na memoria (NÃO COPIE EXATAMENTE):\n{context}\n\nCliente: {user_message}"
 
-        return await asyncio.to_thread(self._generate_content_sync, prompt)
+        try:
+            return await asyncio.to_thread(self._generate_content_sync, prompt)
+        except Exception as exc:
+            logger.error("Erro assincrono ao gerar resposta no Gemini: %s", exc)
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
 
 ai_service = AIService()
