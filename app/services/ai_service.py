@@ -56,7 +56,7 @@ class AIService:
         if not self.collection:
             return ""
         try:
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
+            results = self.collection.query(query_texts=[query], n_results=4)
             docs = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
@@ -73,7 +73,7 @@ class AIService:
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
                 contents=f"{MASTER_PROMPT}\n\n{prompt}",
-                config={"temperature": settings.AI_TEMPERATURE}
+                config={"temperature": 0.6}
             )
             text = getattr(response, "text", "") or ""
             return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."

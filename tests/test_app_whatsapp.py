@@ -27,12 +27,12 @@ class _FakeLearningSystem:
 fake_learning.learning_system = _FakeLearningSystem()
 sys.modules["learning_system"] = fake_learning
 
-import app_whatsapp  # noqa: E402
+import app.main as app_main  # noqa: E402
 
 
 def _post_json(path: str, payload: dict) -> httpx.Response:
     async def _run() -> httpx.Response:
-        transport = httpx.ASGITransport(app=app_whatsapp.app)
+        transport = httpx.ASGITransport(app=app_main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             return await client.post(path, json=payload)
 
