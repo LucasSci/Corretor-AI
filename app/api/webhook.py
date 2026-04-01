@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -143,7 +143,7 @@ async def chat(payload: MessageIn):
 
 
 @router.post("/webhook")
-async def webhook_evolution(request: Request):
+async def webhook_evolution(request: Request) -> Dict[str, Any]:
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:

@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -54,21 +54,21 @@ class WhatsAppService:
 
                 if response.status_code in [400, 404]:
                     print(f"❌ Erro Evolution API [{response.status_code}]: {response.text}")
-                    logger.error(f"Erro Evolution API [{response.status_code}]: {response.text}")
+                    logger.error("Erro Evolution API [%s]: %s", response.status_code, response.text)
 
                 response.raise_for_status()
                 return response.json()
         except httpx.RequestError as e:
             print(f"❌ Erro de conexão com a Evolution API: {e}")
-            logger.error(f"Erro de conexão com a Evolution API: {e}")
+            logger.error("Erro de conexão com a Evolution API: %s", e)
             return None
         except httpx.HTTPStatusError as e:
             print(f"❌ Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}")
-            logger.error(f"Erro HTTP da Evolution API: {e.response.status_code}")
+            logger.error("Erro HTTP da Evolution API: %s", e.response.status_code)
             return None
         except Exception as e:
             print(f"❌ Erro inesperado ao enviar mensagem WhatsApp: {e}")
-            logger.error(f"Erro inesperado ao enviar mensagem WhatsApp: {e}")
+            logger.error("Erro inesperado ao enviar mensagem WhatsApp: %s", e)
             return None
 
 whatsapp_service = WhatsAppService()
