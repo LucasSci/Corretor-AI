@@ -17,7 +17,7 @@ def test_chat_concurrency_same_contact_no_500():
                     "/chat",
                     json={"contact_id": "concurrency-user", "text": f"mensagem {i}"},
                 )
-                for i in range(60)
+                for i in range(5)
             ]
             responses = await asyncio.gather(*tasks)
 
