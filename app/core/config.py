@@ -1,4 +1,5 @@
 import os
+from typing import List, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,22 +23,23 @@ DEFAULT_DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///./data/app.db")
 DEFAULT_MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
 
 # Compatibilidade com nomes antigos e valores locais do projeto.
+# Sem hardcoded de senhas, urls ou instancias como padrao.
 DEFAULT_URL_EVOLUTION = (
     os.getenv("URL_EVOLUTION")
     or os.getenv("WHATSAPP_API_URL")
-    or "http://localhost:8080"
+    or ""
 )
 DEFAULT_API_KEY_EVOLUTION = (
     os.getenv("API_KEY_EVOLUTION")
     or os.getenv("WHATSAPP_API_TOKEN")
     or os.getenv("WHATSAPP_API_KEY")
-    or "lucas_senha_123"
+    or ""
 )
 DEFAULT_EVOLUTION_INSTANCE = (
     os.getenv("EVOLUTION_INSTANCE")
     or os.getenv("WHATSAPP_INSTANCE")
     or os.getenv("INSTANCIA")
-    or "BotRiva1"
+    or ""
 )
 DEFAULT_ALLOW_FROM_ME_TEST = _env_bool("ALLOW_FROM_ME_TEST", True)
 DEFAULT_WEBHOOK_LOOP_GUARD_TTL_SEC = int(os.getenv("WEBHOOK_LOOP_GUARD_TTL_SEC", "30"))
@@ -49,7 +51,7 @@ if BaseSettings is object:
     class Settings:
         APP_NAME: str = DEFAULT_APP_NAME
         DB_URL: str = DEFAULT_DB_URL
-        OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+        OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
         MODEL_NAME: str = DEFAULT_MODEL_NAME
         URL_EVOLUTION: str = DEFAULT_URL_EVOLUTION
         API_KEY_EVOLUTION: str = DEFAULT_API_KEY_EVOLUTION
@@ -61,7 +63,7 @@ if BaseSettings is object:
         WEBHOOK_LOOP_GUARD_TTL_SEC: int = DEFAULT_WEBHOOK_LOOP_GUARD_TTL_SEC
         WHATSAPP_TEST_NUMBER: str = DEFAULT_WHATSAPP_TEST_NUMBER
         WHATSAPP_BOT_NUMBER: str = DEFAULT_WHATSAPP_BOT_NUMBER
-        CORS_ORIGINS: list[str] = []
+        CORS_ORIGINS: List[str] = []
 
     settings = Settings()
 else:
@@ -69,7 +71,7 @@ else:
         APP_NAME: str = DEFAULT_APP_NAME
         DB_URL: str = DEFAULT_DB_URL
 
-        OPENAI_API_KEY: str | None = None
+        OPENAI_API_KEY: Optional[str] = None
         MODEL_NAME: str = DEFAULT_MODEL_NAME
 
         URL_EVOLUTION: str = DEFAULT_URL_EVOLUTION
@@ -84,7 +86,7 @@ else:
         ALLOW_FROM_ME_TEST: bool = DEFAULT_ALLOW_FROM_ME_TEST
         WEBHOOK_LOOP_GUARD_TTL_SEC: int = DEFAULT_WEBHOOK_LOOP_GUARD_TTL_SEC
 
-        CORS_ORIGINS: list[str] = []
+        CORS_ORIGINS: List[str] = []
 
         model_config = SettingsConfigDict(
             env_file=".env",
