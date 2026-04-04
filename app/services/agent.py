@@ -27,7 +27,9 @@ def _contains_yes(text: str) -> bool | None:
     return None
 
 
-async def handle_message(contact_id: str, text: str) -> dict:
+from typing import Dict, Any
+
+async def handle_message(contact_id: str, text: str) -> Dict[str, Any]:
     lead = await get_or_create_lead(contact_id)
     profile = json.loads(lead.profile_json or "{}")
 
