@@ -1,17 +1,16 @@
 import logging
 import sys
+import asyncio
 from typing import Any, Dict, Optional
 
 try:
-    import google.genai as google_genai
-except Exception:
+    import google.genai as google_genai # type: ignore
+except ImportError:
     google_genai = None
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-import asyncio
 
 MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
 O teu tom de voz é 100% natural, empático, persuasivo e leve.
@@ -22,10 +21,10 @@ REGRAS:
 - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
-        self.model = None
-        self.chroma_client = None
-        self.collection = None
+    def __init__(self) -> None:
+        self.model: Any = None
+        self.chroma_client: Any = None
+        self.collection: Any = None
 
         if settings.GEMINI_API_KEY and google_genai is not None:
             try:
@@ -37,9 +36,9 @@ class AIService:
         chromadb = None
         if sys.version_info < (3, 14):
             try:
-                import chromadb as chromadb_module
+                import chromadb as chromadb_module # type: ignore
                 chromadb = chromadb_module
-            except Exception:
+            except ImportError:
                 chromadb = None
         else:
             logger.info("ChromaDB desativado: Python 3.14+ ainda nao e suportado pelo pacote atual.")
@@ -69,27 +68,31 @@ class AIService:
         return await asyncio.to_thread(self._query_chroma, query)
 
     def _generate_content_sync(self, prompt: str) -> str:
+        fallback_msg = "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         try:
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
-                config={"temperature": settings.AI_TEMPERATURE}
+                contents=prompt,
+                config={
+                    "temperature": settings.AI_TEMPERATURE,
+                    "system_instruction": MASTER_PROMPT
+                }
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return text.strip() or fallback_msg
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return fallback_msg
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
+        fallback_msg = "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         if not self.model:
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return fallback_msg
 
         prompt = user_message
         if context:
             prompt = f"Informacao relevante na memoria (NÃO COPIE EXATAMENTE):\n{context}\n\nCliente: {user_message}"
 
         return await asyncio.to_thread(self._generate_content_sync, prompt)
-
 
 ai_service = AIService()

@@ -3,6 +3,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncGenerator
 
 # Evita quebra comum ao rodar com Python fora da venv do projeto.
 def _bootstrap_local_venv() -> None:
@@ -41,15 +42,16 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from app.db.init_db import init_db
+    from app.db.init_db import init_db # type: ignore
 except Exception as exc:
     init_db = None
     logging.getLogger(__name__).warning("Banco indisponivel no startup: %s", exc)
+
 from app.api.webhook import router as webhook_router
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     if init_db is not None:
         await init_db()
     yield
@@ -58,11 +60,11 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, bool]:
     return {"ok": True}
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"name": "CorretorIA", "status": "running", "docs": "/docs"}
 
 app.include_router(webhook_router)
