@@ -56,7 +56,7 @@ class AIService:
         if not self.collection:
             return ""
         try:
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
+            results = self.collection.query(query_texts=[query], n_results=4)
             docs = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
@@ -70,16 +70,20 @@ class AIService:
 
     def _generate_content_sync(self, prompt: str) -> str:
         try:
+            from google.genai.types import GenerateContentConfig
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
-                config={"temperature": settings.AI_TEMPERATURE}
+                contents=prompt,
+                config=GenerateContentConfig(
+                    temperature=0.6,
+                    system_instruction=MASTER_PROMPT,
+                )
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return text.strip() or "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         except Exception as exc:
             logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
         if not self.model:
