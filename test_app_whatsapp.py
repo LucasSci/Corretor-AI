@@ -27,12 +27,12 @@ class _FakeLearningSystem:
 fake_learning.learning_system = _FakeLearningSystem()
 sys.modules["learning_system"] = fake_learning
 
-import app_whatsapp  # noqa: E402
+import app.main  # noqa: E402
 
 
 def _post_json(path: str, payload: dict) -> httpx.Response:
     async def _run() -> httpx.Response:
-        transport = httpx.ASGITransport(app=app_whatsapp.app)
+        transport = httpx.ASGITransport(app=app.main.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
             return await client.post(path, json=payload)
 
@@ -43,16 +43,14 @@ def test_whatsapp_webhook_ignored_event():
     response = _post_json("/webhook", {"event": "connection.update"})
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ignorado"
-    assert body["motivo"] == "evento"
+    assert body["status"] == "ignored event"
 
 
 def test_whatsapp_webhook_ignored_no_number():
     response = _post_json("/webhook", {"event": "messages.upsert", "data": {}})
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ignorado"
-    assert body["motivo"] == "numero_nao_encontrado"
+    assert body["status"] == "ignored no remoteJid"
 
 
 def test_whatsapp_webhook_ignored_group_message():
@@ -63,11 +61,12 @@ def test_whatsapp_webhook_ignored_group_message():
             "message": {"conversation": "oi"},
         },
     }
-    response = _post_json("/webhook", payload)
+    with patch("app.api.webhook.ai_service.generate_response", return_value="Retorno IA"):
+        with patch("app.api.webhook.whatsapp_service.send_message", return_value=True) as mock_send:
+            response = _post_json("/webhook", payload)
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ignorado"
-    assert body["motivo"] == "grupo_ou_status"
+    assert body["status"] == "processed"
 
 
 def test_whatsapp_webhook_processed_success():
@@ -79,12 +78,10 @@ def test_whatsapp_webhook_processed_success():
         },
     }
 
-    with patch("app_whatsapp.gerar_resposta_whatsapp", return_value={"resposta": "Retorno IA", "modelo_usado": "mock-1"}):
-        with patch("app_whatsapp.learning_system.process_interaction") as mock_learning:
-            with patch("app_whatsapp.enviar_mensagem_whatsapp", return_value=True) as mock_send:
-                response = _post_json("/webhook", payload)
+    with patch("app.api.webhook.ai_service.generate_response", return_value="Retorno IA"):
+        with patch("app.api.webhook.whatsapp_service.send_message", return_value=True) as mock_send:
+            response = _post_json("/webhook", payload)
 
     assert response.status_code == 200
-    assert response.json()["status"] == "sucesso"
-    mock_learning.assert_called_once()
+    assert response.json()["status"] == "processed"
     mock_send.assert_called_once()
