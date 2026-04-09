@@ -25,19 +25,19 @@ DEFAULT_MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-flash")
 DEFAULT_URL_EVOLUTION = (
     os.getenv("URL_EVOLUTION")
     or os.getenv("WHATSAPP_API_URL")
-    or "http://localhost:8080"
+    or ""
 )
 DEFAULT_API_KEY_EVOLUTION = (
     os.getenv("API_KEY_EVOLUTION")
     or os.getenv("WHATSAPP_API_TOKEN")
     or os.getenv("WHATSAPP_API_KEY")
-    or "lucas_senha_123"
+    or ""
 )
 DEFAULT_EVOLUTION_INSTANCE = (
     os.getenv("EVOLUTION_INSTANCE")
     or os.getenv("WHATSAPP_INSTANCE")
     or os.getenv("INSTANCIA")
-    or "BotRiva1"
+    or ""
 )
 DEFAULT_ALLOW_FROM_ME_TEST = _env_bool("ALLOW_FROM_ME_TEST", True)
 DEFAULT_WEBHOOK_LOOP_GUARD_TTL_SEC = int(os.getenv("WEBHOOK_LOOP_GUARD_TTL_SEC", "30"))
@@ -83,6 +83,7 @@ else:
         CHROMA_K: int = 4
         ALLOW_FROM_ME_TEST: bool = DEFAULT_ALLOW_FROM_ME_TEST
         WEBHOOK_LOOP_GUARD_TTL_SEC: int = DEFAULT_WEBHOOK_LOOP_GUARD_TTL_SEC
+        PORT: int = 8000
 
         CORS_ORIGINS: list[str] = []
 

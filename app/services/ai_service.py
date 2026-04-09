@@ -22,10 +22,10 @@ REGRAS:
 - FALTA DE INFORMAÇÃO: Se a informação não estiver na memória, não digas friamente 'Não sei'. Diz algo como: 'De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me...'"""
 
 class AIService:
-    def __init__(self):
-        self.model = None
-        self.chroma_client = None
-        self.collection = None
+    def __init__(self) -> None:
+        self.model: Any = None
+        self.chroma_client: Any = None
+        self.collection: Any = None
 
         if settings.GEMINI_API_KEY and google_genai is not None:
             try:
@@ -70,10 +70,15 @@ class AIService:
 
     def _generate_content_sync(self, prompt: str) -> str:
         try:
+            from google.genai import types
+            config = types.GenerateContentConfig(
+                temperature=settings.AI_TEMPERATURE,
+                system_instruction=MASTER_PROMPT
+            )
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
-                config={"temperature": settings.AI_TEMPERATURE}
+                contents=prompt,
+                config=config
             )
             text = getattr(response, "text", "") or ""
             return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."

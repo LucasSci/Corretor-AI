@@ -57,12 +57,14 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
 
+from typing import Dict, Any
+
 @app.get("/health")
-async def health():
+async def health() -> Dict[str, bool]:
     return {"ok": True}
 
 @app.get("/")
-async def root():
+async def root() -> Dict[str, str]:
     return {"name": "CorretorIA", "status": "running", "docs": "/docs"}
 
 app.include_router(webhook_router)
@@ -78,8 +80,10 @@ if __name__ == "__main__":
             r".\.venv\Scripts\python.exe -m pip install -r requirements.txt"
         ) from exc
 
+    from app.core.config import settings
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=int(os.getenv("PORT", "8000")),
+        port=settings.PORT,
     )
