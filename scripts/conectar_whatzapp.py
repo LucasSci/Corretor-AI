@@ -1,16 +1,24 @@
+import os
 import requests
 import base64
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configurações do seu Docker local
-url = "http://localhost:8080/instance/create"
+URL_EVOLUTION = os.getenv("URL_EVOLUTION", "").rstrip("/")
+API_KEY_EVOLUTION = os.getenv("API_KEY_EVOLUTION", "")
+EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "")
+
+url = f"{URL_EVOLUTION}/instance/create"
 headers = {
-    "apikey": "lucas_senha_123",  # A senha que você definiu no comando do Docker
+    "apikey": API_KEY_EVOLUTION,
     "Content-Type": "application/json"
 }
 
 # Dados da nova instância
 payload = {
-    "instanceName": "BotRiva1",
+    "instanceName": EVOLUTION_INSTANCE,
     "qrcode": True
 }
 

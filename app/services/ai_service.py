@@ -72,8 +72,11 @@ class AIService:
         try:
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
-                contents=f"{MASTER_PROMPT}\n\n{prompt}",
-                config={"temperature": settings.AI_TEMPERATURE}
+                contents=prompt,
+                config={
+                    "temperature": settings.AI_TEMPERATURE,
+                    "system_instruction": MASTER_PROMPT
+                }
             )
             text = getattr(response, "text", "") or ""
             return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
