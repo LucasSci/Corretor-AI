@@ -1,22 +1,15 @@
-import os
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # 1. Coloque o nome da instância que você conectou o QR Code
-NOME_INSTANCIA = os.getenv("EVOLUTION_INSTANCE", "")
+NOME_INSTANCIA = "BotRiva1" # ou CorretorRiva01
 
 # 2. Coloque a URL gerada pelo Ngrok + /webhook no final
-URL_NGROK = os.getenv("WEBHOOK_URL", "https://alexander-irreproachable-wayne.ngrok-free.dev/webhook")
+URL_NGROK = "https://alexander-irreproachable-wayne.ngrok-free.dev/webhook"
 
-URL_EVOLUTION = os.getenv("URL_EVOLUTION", "").rstrip("/")
-API_KEY_EVOLUTION = os.getenv("API_KEY_EVOLUTION", "")
-
-url = f"{URL_EVOLUTION}/webhook/set/{NOME_INSTANCIA}"
+url = f"http://localhost:8080/webhook/set/{NOME_INSTANCIA}"
 
 headers = {
-    "apikey": API_KEY_EVOLUTION,
+    "apikey": "lucas_senha_123",
     "Content-Type": "application/json"
 }
 
