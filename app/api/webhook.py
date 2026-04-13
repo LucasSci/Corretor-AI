@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -9,7 +9,7 @@ from app.core.config import settings
 
 try:
     from app.services.agent import handle_message
-except Exception:
+except ImportError:
     handle_message = None
 
 from app.services.ai_service import ai_service
@@ -17,11 +17,13 @@ from app.services.whatsapp_service import whatsapp_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-_RECENT_OUTGOING: dict[tuple[str, str], float] = {}
+
+# Cache to prevent webhook outgoing loops
+_RECENT_OUTGOING: Dict[tuple[str, str], float] = {}
 
 
 def _cleanup_recent_outgoing(now_ts: float) -> None:
-    ttl = max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
+    ttl: int = max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
     expired = [k for k, ts in _RECENT_OUTGOING.items() if (now_ts - ts) > ttl]
     for k in expired:
         _RECENT_OUTGOING.pop(k, None)
@@ -52,6 +54,7 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
 
 
 def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Robust number extraction logic handling nested dictionaries."""
     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
 
     key_obj: Dict[str, Any] = {}
@@ -79,7 +82,7 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
                 message_obj = {"text": first["text"]}
             key_obj = first.get("key", {}) if isinstance(first.get("key"), dict) else {}
 
-    remote_jid = None
+    remote_jid: Optional[str] = None
     if isinstance(data.get("key"), dict):
         remote_jid = data["key"].get("remoteJid")
     if not remote_jid and isinstance(key_obj, dict):
@@ -136,7 +139,7 @@ class MessageIn(BaseModel):
 @router.post("/chat")
 async def chat(payload: MessageIn) -> Dict[str, Any]:
     if handle_message is None:
-        raise HTTPException(status_code=503, detail="Servico de lead indisponivel no momento")
+        raise HTTPException(status_code=503, detail="Lead service unavailable at the moment")
 
     result = await handle_message(payload.contact_id, payload.text)
     return {"contact_id": payload.contact_id, **result}
@@ -147,7 +150,7 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
     try:
         body: Dict[str, Any] = await request.json()
     except Exception as exc:
-        logger.error("Erro ao parsear JSON do webhook: %s", exc)
+        logger.error("Error parsing webhook JSON: %s", exc)
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     event_raw = str(body.get("event", "")).strip()
@@ -159,30 +162,31 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
     remote_jid = str(ctx.get("remote_jid") or "").strip()
 
     if not remote_jid:
-        logger.warning("remoteJid nao encontrado no payload")
+        logger.warning("remoteJid not found in payload")
         return {"status": "ignored no remoteJid"}
 
+    # Test logic bypass
     if "@lid" in remote_jid:
         if settings.WHATSAPP_TEST_NUMBER:
-            logger.info("Bypass @lid ativo. Redirecionando para %s", settings.WHATSAPP_TEST_NUMBER)
+            logger.info("Bypass @lid active. Redirecting to %s", settings.WHATSAPP_TEST_NUMBER)
             remote_jid = settings.WHATSAPP_TEST_NUMBER
         else:
-            logger.info("Bypass @lid sem numero de teste: %s", remote_jid)
+            logger.info("Bypass @lid without test number: %s", remote_jid)
             return {"status": "ignored @lid bypass"}
 
     text = _extract_text(body, ctx.get("message", {}))
     if not text:
-        logger.info("Nenhum texto extraido da mensagem")
+        logger.info("No text extracted from message")
         return {"status": "ignored no text"}
 
     if ctx.get("from_me") is True:
         if _is_recent_outgoing(remote_jid, text):
-            logger.info("Mensagem eco do bot ignorada para %s", remote_jid)
+            logger.info("Bot echo message ignored for %s", remote_jid)
             return {"status": "ignored bot echo"}
         if not settings.ALLOW_FROM_ME_TEST:
             return {"status": "ignored fromMe"}
 
-    logger.info("Mensagem recebida de %s: %s", remote_jid, text)
+    logger.info("Message received from %s: %s", remote_jid, text)
 
     try:
         context = await ai_service.get_context_from_db(text)
@@ -193,5 +197,5 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
 
         return {"status": "processed", "reply": ai_response}
     except Exception as exc:
-        logger.error("Erro ao processar a mensagem do webhook: %s", exc)
+        logger.error("Error processing webhook message: %s", exc)
         return {"status": "error"}
