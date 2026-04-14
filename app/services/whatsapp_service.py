@@ -1,6 +1,8 @@
-import httpx
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import httpx
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -13,6 +15,9 @@ class WhatsAppService:
 
     @staticmethod
     def _normalize_remote_jid(remote_jid: str) -> str:
+        """
+        Extracts just the number from the remoteJid, e.g. from '5511999999999@s.whatsapp.net'
+        """
         if not remote_jid:
             return ""
         if "@" in remote_jid:
@@ -20,23 +25,27 @@ class WhatsAppService:
         return remote_jid
 
     async def send_message(self, remote_jid: str, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Sends a WhatsApp message via the Evolution API using v1.8 schema.
+        Handles graceful degradation if credentials are not configured.
+        """
         if not self.base_url or not self.api_key:
-            logger.warning("Credenciais da Evolution API ausentes. Simulando envio no console.")
+            logger.warning("Missing Evolution API credentials. Simulating sending in console.")
             print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
         if not self.instance:
-            logger.warning("EVOLUTION_INSTANCE ausente. Simulando envio no console.")
+            logger.warning("Missing EVOLUTION_INSTANCE. Simulating sending in console.")
             print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
-        endpoint = f"{self.base_url}/message/sendText/{self.instance}"
-        headers = {
+        endpoint: str = f"{self.base_url}/message/sendText/{self.instance}"
+        headers: Dict[str, str] = {
             "Content-Type": "application/json",
             "apikey": self.api_key
         }
 
-        # Evolution API v1.8 payload format com delay e presence
+        # Evolution API v1.8 payload format with delay and presence
         payload: Dict[str, Any] = {
             "number": self._normalize_remote_jid(remote_jid),
             "options": {
@@ -50,25 +59,25 @@ class WhatsAppService:
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(endpoint, json=payload, headers=headers, timeout=10)
+                response = await client.post(endpoint, json=payload, headers=headers, timeout=10.0)
 
                 if response.status_code in [400, 404]:
-                    print(f"❌ Erro Evolution API [{response.status_code}]: {response.text}")
-                    logger.error(f"Erro Evolution API [{response.status_code}]: {response.text}")
+                    print(f"❌ Evolution API Error [{response.status_code}]: {response.text}")
+                    logger.error("Evolution API Error [%s]: %s", response.status_code, response.text)
 
                 response.raise_for_status()
                 return response.json()
         except httpx.RequestError as e:
-            print(f"❌ Erro de conexão com a Evolution API: {e}")
-            logger.error(f"Erro de conexão com a Evolution API: {e}")
+            print(f"❌ Connection error with Evolution API: {e}")
+            logger.error("Connection error with Evolution API: %s", e)
             return None
         except httpx.HTTPStatusError as e:
-            print(f"❌ Erro HTTP da Evolution API: {e.response.status_code} - {e.response.text}")
-            logger.error(f"Erro HTTP da Evolution API: {e.response.status_code}")
+            print(f"❌ HTTP error from Evolution API: {e.response.status_code} - {e.response.text}")
+            logger.error("HTTP error from Evolution API: %s - %s", e.response.status_code, e.response.text)
             return None
         except Exception as e:
-            print(f"❌ Erro inesperado ao enviar mensagem WhatsApp: {e}")
-            logger.error(f"Erro inesperado ao enviar mensagem WhatsApp: {e}")
+            print(f"❌ Unexpected error sending WhatsApp message: {e}")
+            logger.error("Unexpected error sending WhatsApp message: %s", e)
             return None
 
 whatsapp_service = WhatsAppService()

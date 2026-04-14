@@ -1,17 +1,16 @@
+import asyncio
 import logging
 import sys
-from typing import Any, Dict, Optional
-
-try:
-    import google.genai as google_genai
-except Exception:
-    google_genai = None
+from typing import Any
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+try:
+    import google.genai as google_genai
+except ImportError:
+    google_genai = None  # type: ignore
 
-import asyncio
+logger = logging.getLogger(__name__)
 
 MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
 O teu tom de voz é 100% natural, empático, persuasivo e leve.
@@ -31,7 +30,7 @@ class AIService:
             try:
                 self.model = google_genai.Client(api_key=settings.GEMINI_API_KEY)
             except Exception as exc:
-                logger.error("Erro ao inicializar cliente Gemini: %s", exc)
+                logger.error("Error initializing Gemini client: %s", exc)
                 self.model = None
 
         chromadb = None
@@ -39,58 +38,62 @@ class AIService:
             try:
                 import chromadb as chromadb_module
                 chromadb = chromadb_module
-            except Exception:
+            except ImportError:
                 chromadb = None
         else:
-            logger.info("ChromaDB desativado: Python 3.14+ ainda nao e suportado pelo pacote atual.")
+            logger.info("ChromaDB disabled: Python 3.14+ is not yet supported by the package.")
 
         if chromadb is not None:
             try:
                 self.chroma_client = chromadb.PersistentClient(path="data/chroma_db")
                 self.collection = self.chroma_client.get_or_create_collection("riva_imoveis")
             except Exception as exc:
-                logger.error("Erro ao inicializar ChromaDB: %s", exc)
+                logger.error("Error initializing ChromaDB: %s", exc)
                 self.collection = None
 
     def _query_chroma(self, query: str) -> str:
         if not self.collection:
             return ""
         try:
+            # Enforce k=4 results retrieval using CHROMA_K correctly
             results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
             docs = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
             return ""
         except Exception as exc:
-            logger.error("Erro ao buscar contexto no ChromaDB: %s", exc)
+            logger.error("Error fetching context from ChromaDB: %s", exc)
             return ""
 
     async def get_context_from_db(self, query: str) -> str:
+        """Fetch matching knowledge base chunks concurrently without blocking event loop."""
         return await asyncio.to_thread(self._query_chroma, query)
 
     def _generate_content_sync(self, prompt: str) -> str:
+        fallback_msg = "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         try:
             response = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
                 contents=prompt,
                 config={
-                    "temperature": settings.AI_TEMPERATURE,
+                    "temperature": settings.AI_TEMPERATURE, # Expects 0.6
                     "system_instruction": MASTER_PROMPT
                 }
             )
             text = getattr(response, "text", "") or ""
-            return text.strip() or "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return text.strip() or fallback_msg
         except Exception as exc:
-            logger.error("Erro ao gerar resposta no Gemini: %s", exc)
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            logger.error("Error generating response in Gemini: %s", exc)
+            return fallback_msg
 
     async def generate_response(self, user_message: str, context: str = "") -> str:
+        """Call LLM synchronously wrapped in an asyncio thread to prevent loop blocking."""
         if not self.model:
-            return "De cabeça agora não me recordo desse detalhe, mas vou confirmar com a engenharia. Entretanto, diz-me..."
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
         prompt = user_message
         if context:
-            prompt = f"Informacao relevante na memoria (NÃO COPIE EXATAMENTE):\n{context}\n\nCliente: {user_message}"
+            prompt = f"Relevant info in memory (DO NOT EXACTLY COPY-PASTE):\n{context}\n\nClient: {user_message}"
 
         return await asyncio.to_thread(self._generate_content_sync, prompt)
 
