@@ -30,8 +30,8 @@ class WhatsAppService:
             print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
-        endpoint = f"{self.base_url}/message/sendText/{self.instance}"
-        headers = {
+        endpoint: str = f"{self.base_url}/message/sendText/{self.instance}"
+        headers: Dict[str, str] = {
             "Content-Type": "application/json",
             "apikey": self.api_key
         }

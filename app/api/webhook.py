@@ -185,8 +185,8 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
     logger.info("Mensagem recebida de %s: %s", remote_jid, text)
 
     try:
-        context = await ai_service.get_context_from_db(text)
-        ai_response = await ai_service.generate_response(text, context)
+        context: str = await ai_service.get_context_from_db(text)
+        ai_response: str = await ai_service.generate_response(text, context)
 
         await whatsapp_service.send_message(remote_jid, ai_response)
         _remember_outgoing(remote_jid, ai_response)
