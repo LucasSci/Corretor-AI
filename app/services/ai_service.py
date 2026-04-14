@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 import asyncio
 
-MASTER_PROMPT = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
+MASTER_PROMPT: str = """És um corretor de imóveis de luxo da Riva Incorporadora, a conversar com um cliente pelo WhatsApp.
 O teu tom de voz é 100% natural, empático, persuasivo e leve.
 REGRAS:
 - PROIBIDO COPIAR E COLAR: Nunca repitas as frases exatas da memória. Absorve o dado e cria uma frase coloquial.
