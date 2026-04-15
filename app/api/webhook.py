@@ -7,11 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 
-try:
-    from app.services.agent import handle_message
-except ImportError:
-    handle_message = None
-
+from app.services.agent import handle_message
 from app.services.ai_service import ai_service
 from app.services.whatsapp_service import whatsapp_service
 

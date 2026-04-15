@@ -7,6 +7,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class WhatsAppService:
     def __init__(self) -> None:
         self.base_url: str = settings.URL_EVOLUTION.rstrip("/") if settings.URL_EVOLUTION else ""
@@ -79,5 +80,6 @@ class WhatsAppService:
             print(f"❌ Unexpected error sending WhatsApp message: {e}")
             logger.error("Unexpected error sending WhatsApp message: %s", e)
             return None
+
 
 whatsapp_service = WhatsAppService()
