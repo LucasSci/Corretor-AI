@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 
@@ -55,9 +55,9 @@ class AIService:
         if not self.collection:
             return ""
         try:
-            # Enforce k=4 results retrieval using CHROMA_K correctly
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
-            docs = results.get("documents", []) if isinstance(results, dict) else []
+            # Configure to return exactly n_results=4
+            results: Dict[str, Any] = self.collection.query(query_texts=[query], n_results=4)
+            docs: List[List[str]] = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
             return ""
@@ -67,20 +67,24 @@ class AIService:
 
     async def get_context_from_db(self, query: str) -> str:
         """Fetch matching knowledge base chunks concurrently without blocking event loop."""
-        return await asyncio.to_thread(self._query_chroma, query)
+        try:
+            return await asyncio.to_thread(self._query_chroma, query)
+        except Exception as exc:
+            logger.error("Error running ChromaDB query in thread: %s", exc)
+            return ""
 
     def _generate_content_sync(self, prompt: str) -> str:
         fallback_msg = "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
         try:
-            response = self.model.models.generate_content(
+            response: Any = self.model.models.generate_content(
                 model=settings.MODEL_NAME,
                 contents=prompt,
                 config={
-                    "temperature": settings.AI_TEMPERATURE, # Expects 0.6
+                    "temperature": 0.6,
                     "system_instruction": MASTER_PROMPT
                 }
             )
-            text = getattr(response, "text", "") or ""
+            text: str = getattr(response, "text", "") or ""
             return text.strip() or fallback_msg
         except Exception as exc:
             logger.error("Error generating response in Gemini: %s", exc)
@@ -91,11 +95,15 @@ class AIService:
         if not self.model:
             return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
-        prompt = user_message
+        prompt: str = user_message
         if context:
             prompt = f"Relevant info in memory (DO NOT EXACTLY COPY-PASTE):\n{context}\n\nClient: {user_message}"
 
-        return await asyncio.to_thread(self._generate_content_sync, prompt)
+        try:
+            return await asyncio.to_thread(self._generate_content_sync, prompt)
+        except Exception as exc:
+            logger.error("Error running Gemini generation in thread: %s", exc)
+            return "De cabeça agora não me recordo desse detalhe da planta, mas vou confirmar com a engenharia. Entretanto, diz-me..."
 
 
 ai_service = AIService()

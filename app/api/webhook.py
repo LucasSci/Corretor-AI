@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, List
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -19,12 +19,12 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # Cache to prevent webhook outgoing loops
-_RECENT_OUTGOING: Dict[tuple[str, str], float] = {}
+_RECENT_OUTGOING: Dict[Tuple[str, str], float] = {}
 
 
 def _cleanup_recent_outgoing(now_ts: float) -> None:
     ttl: int = max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
-    expired = [k for k, ts in _RECENT_OUTGOING.items() if (now_ts - ts) > ttl]
+    expired: List[Tuple[str, str]] = [k for k, ts in _RECENT_OUTGOING.items() if (now_ts - ts) > ttl]
     for k in expired:
         _RECENT_OUTGOING.pop(k, None)
 
@@ -34,7 +34,7 @@ def _remember_outgoing(remote_jid: str, text: str) -> None:
     text = (text or "").strip()
     if not remote_jid or not text:
         return
-    now_ts = time.time()
+    now_ts: float = time.time()
     _cleanup_recent_outgoing(now_ts)
     _RECENT_OUTGOING[(remote_jid, text)] = now_ts
 
@@ -45,9 +45,9 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
     if not remote_jid or not text:
         return False
 
-    now_ts = time.time()
+    now_ts: float = time.time()
     _cleanup_recent_outgoing(now_ts)
-    ts = _RECENT_OUTGOING.get((remote_jid, text))
+    ts: Optional[float] = _RECENT_OUTGOING.get((remote_jid, text))
     if ts is None:
         return False
     return (now_ts - ts) <= max(1, int(settings.WEBHOOK_LOOP_GUARD_TTL_SEC))
@@ -55,7 +55,7 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
 
 def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Robust number extraction logic handling nested dictionaries."""
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data: Dict[str, Any] = payload.get("data") if isinstance(payload.get("data"), dict) else {}
 
     key_obj: Dict[str, Any] = {}
     message_obj: Dict[str, Any] = {}
@@ -65,7 +65,7 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
         key_obj = data.get("key", {}) if isinstance(data.get("key"), dict) else {}
 
     if (not message_obj) and isinstance(data.get("messages"), list) and data["messages"]:
-        first = data["messages"][0]
+        first: Any = data["messages"][0]
         if isinstance(first, dict):
             if isinstance(first.get("message"), dict):
                 message_obj = first["message"]
@@ -74,7 +74,7 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
             key_obj = first.get("key", {}) if isinstance(first.get("key"), dict) else {}
 
     if (not message_obj) and isinstance(payload.get("messages"), list) and payload["messages"]:
-        first = payload["messages"][0]
+        first: Any = payload["messages"][0]
         if isinstance(first, dict):
             if isinstance(first.get("message"), dict):
                 message_obj = first["message"]
@@ -90,11 +90,11 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not remote_jid:
         remote_jid = data.get("from") or payload.get("from")
     if (not remote_jid) and isinstance(payload.get("messages"), list) and payload["messages"]:
-        first = payload["messages"][0]
+        first: Any = payload["messages"][0]
         if isinstance(first, dict):
             remote_jid = first.get("from")
 
-    from_me = False
+    from_me: bool = False
     if isinstance(data.get("key"), dict):
         from_me = bool(data["key"].get("fromMe"))
     if not from_me and isinstance(key_obj, dict):
@@ -110,7 +110,7 @@ def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _extract_text(payload: Dict[str, Any], message_obj: Dict[str, Any]) -> str:
-    text = ""
+    text: str = ""
 
     if "conversation" in message_obj and isinstance(message_obj.get("conversation"), str):
         text = message_obj["conversation"]
@@ -141,8 +141,12 @@ async def chat(payload: MessageIn) -> Dict[str, Any]:
     if handle_message is None:
         raise HTTPException(status_code=503, detail="Lead service unavailable at the moment")
 
-    result = await handle_message(payload.contact_id, payload.text)
-    return {"contact_id": payload.contact_id, **result}
+    try:
+        result: Dict[str, Any] = await handle_message(payload.contact_id, payload.text)
+        return {"contact_id": payload.contact_id, **result}
+    except Exception as exc:
+        logger.error("Error processing chat message: %s", exc)
+        raise HTTPException(status_code=500, detail="Internal server error while processing chat message")
 
 
 @router.post("/webhook")
@@ -153,13 +157,13 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
         logger.error("Error parsing webhook JSON: %s", exc)
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    event_raw = str(body.get("event", "")).strip()
-    event_norm = event_raw.lower().replace("_", ".")
+    event_raw: str = str(body.get("event", "")).strip()
+    event_norm: str = event_raw.lower().replace("_", ".")
     if event_raw and event_norm != "messages.upsert":
         return {"status": "ignored event"}
 
-    ctx = _extract_message_context(body)
-    remote_jid = str(ctx.get("remote_jid") or "").strip()
+    ctx: Dict[str, Any] = _extract_message_context(body)
+    remote_jid: str = str(ctx.get("remote_jid") or "").strip()
 
     if not remote_jid:
         logger.warning("remoteJid not found in payload")
@@ -174,7 +178,7 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
             logger.info("Bypass @lid without test number: %s", remote_jid)
             return {"status": "ignored @lid bypass"}
 
-    text = _extract_text(body, ctx.get("message", {}))
+    text: str = _extract_text(body, ctx.get("message", {}))
     if not text:
         logger.info("No text extracted from message")
         return {"status": "ignored no text"}
@@ -189,8 +193,8 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
     logger.info("Message received from %s: %s", remote_jid, text)
 
     try:
-        context = await ai_service.get_context_from_db(text)
-        ai_response = await ai_service.generate_response(text, context)
+        context: str = await ai_service.get_context_from_db(text)
+        ai_response: str = await ai_service.generate_response(text, context)
 
         await whatsapp_service.send_message(remote_jid, ai_response)
         _remember_outgoing(remote_jid, ai_response)

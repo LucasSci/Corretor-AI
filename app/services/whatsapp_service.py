@@ -59,7 +59,7 @@ class WhatsAppService:
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(endpoint, json=payload, headers=headers, timeout=10.0)
+                response: httpx.Response = await client.post(endpoint, json=payload, headers=headers, timeout=10.0)
 
                 if response.status_code in [400, 404]:
                     print(f"❌ Evolution API Error [{response.status_code}]: {response.text}")
