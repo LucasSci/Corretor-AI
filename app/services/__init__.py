@@ -1,7 +1,4 @@
-"""Pacote de servicos.
+__all__ = ["whatsapp_service", "ai_service"]
 
-Evita carregar dependencias opcionais durante import global.
-Importe os modulos especificos conforme necessidade.
-"""
-
-__all__ = []
+from app.services.whatsapp_service import whatsapp_service
+from app.services.ai_service import ai_service
