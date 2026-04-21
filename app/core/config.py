@@ -4,8 +4,9 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Load `.env` into environment variables
-load_dotenv()
+class Settings(BaseSettings):
+    APP_NAME: str = "CorretorIA"
+    DB_URL: str = "sqlite+aiosqlite:///./data/app.db"
 
 
 class Settings(BaseSettings):

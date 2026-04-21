@@ -16,9 +16,12 @@ except Exception as exc:
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    if init_db is not None:
-        await init_db()
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    try:
+        if init_db is not None:
+            await init_db()
+    except Exception as exc:
+        logger.warning("Database unavailable on startup: %s", exc)
     yield
 
 
