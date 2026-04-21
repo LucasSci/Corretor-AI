@@ -1,12 +1,24 @@
+import base64
 import asyncio
+import shutil
+import tempfile
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import httpx
+import pytest
 
 
 with patch("app.db.init_db.init_db", new_callable=AsyncMock):
     from app.main import app
 from app.core.config import settings
+from app.services.media_storage_service import whatsapp_media_storage_service
+
+
+@pytest.fixture(autouse=True)
+def _reset_allowed_numbers():
+    with patch.object(settings, "WHATSAPP_ALLOWED_NUMBERS", ""):
+        yield
 
 
 def _post_json(path: str, payload: dict) -> httpx.Response:
@@ -154,3 +166,154 @@ def test_webhook_error_when_ai_fails():
 
     assert response.status_code == 200
     assert response.json()["status"] == "error"
+
+
+def test_webhook_ignored_not_allowed_number():
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"fromMe": False, "remoteJid": "5511999999999@s.whatsapp.net"},
+            "message": {"conversation": "oi"},
+        },
+    }
+
+    with patch.object(settings, "WHATSAPP_ALLOWED_NUMBERS", "5521975907217"):
+        response = _post_json("/webhook", payload)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored not allowed number"
+
+
+def test_webhook_allows_brazilian_number_without_country_code():
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"fromMe": False, "remoteJid": "5521975907217@s.whatsapp.net"},
+            "message": {"conversation": "oi"},
+        },
+    }
+
+    with patch.object(settings, "WHATSAPP_ALLOWED_NUMBERS", "21975907217"):
+        with patch("app.api.webhook.ai_service.get_context_from_db", new=AsyncMock(return_value="ctx")):
+            with patch("app.api.webhook.ai_service.generate_response", new=AsyncMock(return_value="Resposta mock")):
+                with patch("app.api.webhook.whatsapp_service.send_message", new=AsyncMock(return_value={"ok": True})):
+                    response = _post_json("/webhook", payload)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "processed"
+
+
+def test_webhook_processes_admin_command():
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"fromMe": False, "remoteJid": "5521975907217@s.whatsapp.net"},
+            "message": {"conversation": "/ping"},
+        },
+    }
+
+    with patch.object(settings, "WHATSAPP_COMMAND_NUMBERS", "21975907217"):
+        with patch("app.api.webhook.admin_command_service.handle_command", new=AsyncMock(return_value="pong")) as mock_cmd:
+            with patch("app.api.webhook.whatsapp_service.send_message", new=AsyncMock(return_value={"ok": True})) as mock_send:
+                response = _post_json("/webhook", payload)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "processed command"
+    assert response.json()["reply"] == "pong"
+    mock_cmd.assert_awaited_once_with("/ping")
+    mock_send.assert_awaited_once_with("5521975907217@s.whatsapp.net", "pong")
+
+
+def test_webhook_ignores_unauthorized_admin_command():
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"fromMe": False, "remoteJid": "5511999999999@s.whatsapp.net"},
+            "message": {"conversation": "/status"},
+        },
+    }
+
+    with patch.object(settings, "WHATSAPP_ALLOWED_NUMBERS", ""):
+        with patch.object(settings, "WHATSAPP_COMMAND_NUMBERS", "21975907217"):
+            response = _post_json("/webhook", payload)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored unauthorized command"
+
+
+def test_webhook_media_only_saves_file_by_type():
+    encoded = base64.b64encode(b"conteudo-doc-teste").decode("ascii")
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"fromMe": False, "remoteJid": "5511666666666@s.whatsapp.net"},
+            "message": {
+                "documentMessage": {
+                    "fileName": "Contrato Cliente.pdf",
+                    "mimetype": "application/pdf",
+                    "base64": encoded,
+                }
+            },
+        },
+    }
+
+    old_root = whatsapp_media_storage_service.root_dir
+    tmp = tempfile.mkdtemp()
+    try:
+        with patch.object(settings, "WHATSAPP_MEDIA_AUTO_SAVE", True):
+            with patch.object(settings, "WHATSAPP_UPLOADS_DIR", tmp):
+                whatsapp_media_storage_service.root_dir = Path(tmp)
+                with patch("app.api.webhook.whatsapp_service.send_message", new=AsyncMock(return_value={"ok": True})):
+                    response = _post_json("/webhook", payload)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "processed media"
+        assert len(body["saved_files"]) == 1
+
+        saved_path = Path(body["saved_files"][0])
+        assert saved_path.exists()
+        assert "document" in str(saved_path)
+        assert saved_path.suffix == ".pdf"
+        assert saved_path.read_bytes() == b"conteudo-doc-teste"
+    finally:
+        whatsapp_media_storage_service.root_dir = old_root
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_webhook_text_plus_media_saves_and_replies():
+    encoded = base64.b64encode(b"imagem-fake").decode("ascii")
+    payload = {
+        "event": "messages.upsert",
+        "data": {
+            "key": {"fromMe": False, "remoteJid": "5511555555555@s.whatsapp.net"},
+            "message": {
+                "conversation": "olha esse arquivo",
+                "imageMessage": {
+                    "mimetype": "image/jpeg",
+                    "base64": encoded,
+                },
+            },
+        },
+    }
+
+    old_root = whatsapp_media_storage_service.root_dir
+    tmp = tempfile.mkdtemp()
+    try:
+        with patch.object(settings, "WHATSAPP_MEDIA_AUTO_SAVE", True):
+            with patch.object(settings, "WHATSAPP_UPLOADS_DIR", tmp):
+                whatsapp_media_storage_service.root_dir = Path(tmp)
+                with patch("app.api.webhook.ai_service.get_context_from_db", new=AsyncMock(return_value="ctx")):
+                    with patch("app.api.webhook.ai_service.generate_response", new=AsyncMock(return_value="Resposta IA")):
+                        with patch("app.api.webhook.whatsapp_service.send_message", new=AsyncMock(return_value={"ok": True})):
+                            response = _post_json("/webhook", payload)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "processed"
+        assert body["reply"] == "Resposta IA"
+        assert len(body.get("saved_files", [])) == 1
+        assert Path(body["saved_files"][0]).exists()
+    finally:
+        whatsapp_media_storage_service.root_dir = old_root
+        shutil.rmtree(tmp, ignore_errors=True)

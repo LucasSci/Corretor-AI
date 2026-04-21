@@ -29,6 +29,7 @@ _bootstrap_local_venv()
 
 try:
     from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
         "Dependencias ausentes: FastAPI nao encontrado. "
@@ -46,6 +47,8 @@ except Exception as exc:
     init_db = None
     logging.getLogger(__name__).warning("Banco indisponivel no startup: %s", exc)
 from app.api.webhook import router as webhook_router
+from app.api.admin import router as admin_router
+from app.core.config import settings
 
 
 @asynccontextmanager
@@ -57,6 +60,15 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
 
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 @app.get("/health")
 async def health():
     return {"ok": True}
@@ -66,6 +78,7 @@ async def root():
     return {"name": "CorretorIA", "status": "running", "docs": "/docs"}
 
 app.include_router(webhook_router)
+app.include_router(admin_router)
 
 
 if __name__ == "__main__":
@@ -80,6 +93,6 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", "8000")),
+        host=settings.HOST,
+        port=settings.PORT,
     )

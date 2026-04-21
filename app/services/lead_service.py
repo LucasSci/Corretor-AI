@@ -1,8 +1,10 @@
 import json
-from sqlalchemy import select, update
+
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.exc import IntegrityError
-from app.db.session import SessionLocal
+
 from app.db.models import Lead
+from app.db.session import SessionLocal
 
 DEFAULT_PROFILE = {
     "nome": None,
@@ -74,3 +76,36 @@ async def set_stage(lead: Lead, stage: str) -> Lead:
         await session.commit()
     lead.stage = stage
     return lead
+
+
+async def list_leads(limit: int = 50) -> list[dict]:
+    async with SessionLocal() as session:
+        rows = (
+            await session.execute(
+                select(Lead).order_by(desc(Lead.created_at)).limit(max(1, min(limit, 200)))
+            )
+        ).scalars().all()
+
+    items = []
+    for row in rows:
+        try:
+            profile = json.loads(row.profile_json or "{}")
+        except Exception:
+            profile = {}
+
+        items.append(
+            {
+                "id": row.id,
+                "contact_id": row.contact_id,
+                "stage": row.stage,
+                "profile": profile,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+            }
+        )
+    return items
+
+
+async def get_lead_counts() -> dict[str, int]:
+    async with SessionLocal() as session:
+        total = await session.scalar(select(func.count()).select_from(Lead))
+    return {"total": int(total or 0)}

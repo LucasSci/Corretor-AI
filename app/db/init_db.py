@@ -1,5 +1,6 @@
-from app.db.session import engine
 from app.db.models import Base
+from app.db.session import engine
+
 
 async def init_db():
     async with engine.begin() as conn:
@@ -19,4 +20,10 @@ async def init_db():
             )
             await conn.exec_driver_sql(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_contact_id ON leads(contact_id)"
+            )
+            await conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_message_events_created_at ON message_events(created_at)"
+            )
+            await conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_job_runs_created_at ON job_runs(created_at)"
             )

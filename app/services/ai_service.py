@@ -20,6 +20,9 @@ MASTER_PROMPT = (
 
 class AIService:
     def __init__(self):
+        self.reload_from_settings()
+
+    def reload_from_settings(self) -> None:
         self.model = None
         self.chroma_client = None
         self.collection = None
