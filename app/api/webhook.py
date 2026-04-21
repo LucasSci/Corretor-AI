@@ -2,7 +2,8 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -14,6 +15,16 @@ except ImportError:
 
 from app.services.ai_service import ai_service
 from app.services.whatsapp_service import whatsapp_service
+
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+
+def get_api_key(api_key_header: str = Depends(api_key_header)) -> str:
+    if settings.CHAT_API_KEY:
+        if api_key_header != settings.CHAT_API_KEY:
+            raise HTTPException(status_code=403, detail="Could not validate credentials")
+    return api_key_header or ""
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -137,7 +148,7 @@ class MessageIn(BaseModel):
 
 
 @router.post("/chat")
-async def chat(payload: MessageIn) -> Dict[str, Any]:
+async def chat(payload: MessageIn, api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
     if handle_message is None:
         raise HTTPException(status_code=503, detail="Lead service unavailable at the moment")
 
