@@ -1,11 +1,12 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.webhook import router as webhook_router
+from app.core.config import settings
 
 try:
     from app.db.init_db import init_db
@@ -23,6 +24,14 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
@@ -38,16 +47,9 @@ app.include_router(webhook_router)
 
 
 if __name__ == "__main__":
-    try:
-        import uvicorn
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Missing dependencies: uvicorn not found. "
-            "Activate the project venv or install requirements."
-        ) from exc
-
+    import uvicorn
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=int(os.getenv("PORT", "8000")),
+        port=settings.PORT,
     )

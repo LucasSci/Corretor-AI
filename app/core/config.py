@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     WHATSAPP_TEST_NUMBER: str = ""
     WHATSAPP_BOT_NUMBER: str = ""
+    CHAT_API_KEY: str = ""
 
     AI_TEMPERATURE: float = 0.6
     CHROMA_K: int = 4
@@ -33,6 +34,7 @@ class Settings(BaseSettings):
         env_file=".env",
         extra="allow",
     )
+
 
 settings = Settings()
 
