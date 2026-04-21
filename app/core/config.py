@@ -7,12 +7,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Load `.env` into environment variables
 load_dotenv()
 
-# Centralize configuration using pydantic-settings when possible.
-# Ensure all credentials and environment variables use clean names without hardcoded fallback credentials.
 
 class Settings(BaseSettings):
     APP_NAME: str = "CorretorIA"
     DB_URL: str = "sqlite+aiosqlite:///./data/app.db"
+    PORT: int = 8000
 
     OPENAI_API_KEY: Optional[str] = None
     MODEL_NAME: str = "gemini-1.5-pro"
@@ -23,6 +22,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     WHATSAPP_TEST_NUMBER: str = ""
     WHATSAPP_BOT_NUMBER: str = ""
+    CHAT_API_KEY: str = ""
 
     AI_TEMPERATURE: float = 0.6
     CHROMA_K: int = 4
@@ -31,13 +31,11 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: List[str] = []
 
-    PORT: int = 8000
-    CHAT_API_KEY: str = ""
-
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="allow",
     )
+
 
 settings = Settings()
 
