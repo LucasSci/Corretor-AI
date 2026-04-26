@@ -8,11 +8,6 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 
-try:
-    from app.services.agent import handle_message
-except ImportError:
-    handle_message = None
-
 from app.services.ai_service import ai_service
 from app.services.whatsapp_service import whatsapp_service
 
@@ -140,20 +135,6 @@ def _extract_text(payload: Dict[str, Any], message_obj: Dict[str, Any]) -> str:
         text = payload["body"]
 
     return text.strip()
-
-
-class MessageIn(BaseModel):
-    contact_id: str = Field(..., max_length=80)
-    text: str = Field(..., max_length=1000)
-
-
-@router.post("/chat")
-async def chat(payload: MessageIn, api_key: str = Depends(get_api_key)) -> Dict[str, Any]:
-    if handle_message is None:
-        raise HTTPException(status_code=503, detail="Lead service unavailable at the moment")
-
-    result = await handle_message(payload.contact_id, payload.text)
-    return {"contact_id": payload.contact_id, **result}
 
 
 @router.post("/webhook")

@@ -13,4 +13,5 @@ data/base_conhecimento*.jsonl
 data/base_conhecimento*.csv
 data/ingest_summary.json
 output.log
+data/chroma_db/
 
