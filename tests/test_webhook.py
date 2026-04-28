@@ -3,9 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
-
-with patch("app.db.init_db.init_db", new_callable=AsyncMock):
-    from app.main import app
+from app.main import app
 from app.core.config import settings
 
 

@@ -9,7 +9,6 @@ load_dotenv()
 
 class Settings(BaseSettings):
     APP_NAME: str = "CorretorIA"
-    DB_URL: str = "sqlite+aiosqlite:///./data/app.db"
     PORT: int = 8000
 
     OPENAI_API_KEY: Optional[str] = None
