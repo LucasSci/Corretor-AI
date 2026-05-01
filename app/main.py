@@ -8,17 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.webhook import router as webhook_router
 from app.core.config import settings
 
-try:
-    from app.db.init_db import init_db
-except Exception as exc:
-    init_db = None
-    logging.getLogger(__name__).warning("Database unavailable on startup: %s", exc)
-
+from typing import AsyncGenerator
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    if init_db is not None:
-        await init_db()
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 

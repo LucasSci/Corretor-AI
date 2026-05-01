@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     MODEL_NAME: str = "gemini-1.5-pro"
 
-    URL_EVOLUTION: str = ""
-    API_KEY_EVOLUTION: str = ""
-    EVOLUTION_INSTANCE: str = ""
-    GEMINI_API_KEY: str = ""
+    URL_EVOLUTION: str
+    API_KEY_EVOLUTION: str
+    EVOLUTION_INSTANCE: str
+    GEMINI_API_KEY: str
     WHATSAPP_TEST_NUMBER: str = ""
     WHATSAPP_BOT_NUMBER: str = ""
     CHAT_API_KEY: str = ""
