@@ -1,11 +1,15 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
+import os
+
+os.environ["URL_EVOLUTION"] = "test"
+os.environ["API_KEY_EVOLUTION"] = "test"
+os.environ["EVOLUTION_INSTANCE"] = "test"
+os.environ["GEMINI_API_KEY"] = "test"
 
 import httpx
 
-
-with patch("app.db.init_db.init_db", new_callable=AsyncMock):
-    from app.main import app
+from app.main import app
 from app.core.config import settings
 
 
