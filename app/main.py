@@ -1,5 +1,4 @@
 import logging
-from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from fastapi import FastAPI
@@ -8,21 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.webhook import router as webhook_router
 from app.core.config import settings
 
-try:
-    from app.db.init_db import init_db
-except Exception as exc:
-    init_db = None
-    logging.getLogger(__name__).warning("Database unavailable on startup: %s", exc)
 
-
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    if init_db is not None:
-        await init_db()
-    yield
-
-
-app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
+app = FastAPI(title="CorretorIA - MVP")
 
 app.add_middleware(
     CORSMiddleware,
