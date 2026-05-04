@@ -56,7 +56,7 @@ class AIService:
             return ""
         try:
             # Enforce k=4 results retrieval using CHROMA_K correctly
-            results = self.collection.query(query_texts=[query], n_results=settings.CHROMA_K)
+            results = self.collection.query(query_texts=[query], n_results=4)
             docs = results.get("documents", []) if isinstance(results, dict) else []
             if docs and docs[0]:
                 return "\n".join(docs[0])
