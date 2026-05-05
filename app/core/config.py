@@ -9,10 +9,8 @@ load_dotenv()
 
 class Settings(BaseSettings):
     APP_NAME: str = "CorretorIA"
-    DB_URL: str = "sqlite+aiosqlite:///./data/app.db"
     PORT: int = 8000
 
-    OPENAI_API_KEY: Optional[str] = None
     MODEL_NAME: str = "gemini-1.5-pro"
 
     URL_EVOLUTION: str = ""
