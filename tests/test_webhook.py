@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
+
 from app.main import app
 from app.core.config import settings
 

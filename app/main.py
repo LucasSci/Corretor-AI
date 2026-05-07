@@ -8,12 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.webhook import router as webhook_router
 from app.core.config import settings
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    yield
-
-
-app = FastAPI(title="CorretorIA - MVP", lifespan=lifespan)
+app = FastAPI(title="CorretorIA - MVP")
 
 app.add_middleware(
     CORSMiddleware,

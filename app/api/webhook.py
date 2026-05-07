@@ -2,24 +2,13 @@ import logging
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.security import APIKeyHeader
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Request
 
 from app.core.config import settings
 
 from app.services.ai_service import ai_service
 from app.services.whatsapp_service import whatsapp_service
 
-API_KEY_NAME = "X-API-Key"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-
-def get_api_key(api_key_header: str = Depends(api_key_header)) -> str:
-    if settings.CHAT_API_KEY:
-        if api_key_header != settings.CHAT_API_KEY:
-            raise HTTPException(status_code=403, detail="Could not validate credentials")
-    return api_key_header or ""
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -61,48 +50,64 @@ def _is_recent_outgoing(remote_jid: str, text: str) -> bool:
 
 def _extract_message_context(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Robust number extraction logic handling nested dictionaries."""
-    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    data_raw = payload.get("data")
+    data = data_raw if isinstance(data_raw, dict) else {}
 
     key_obj: Dict[str, Any] = {}
     message_obj: Dict[str, Any] = {}
 
-    if isinstance(data.get("message"), dict):
-        message_obj = data.get("message", {})
-        key_obj = data.get("key", {}) if isinstance(data.get("key"), dict) else {}
+    msg_raw = data.get("message")
+    if isinstance(msg_raw, dict):
+        message_obj = msg_raw
+        key_raw = data.get("key")
+        key_obj = key_raw if isinstance(key_raw, dict) else {}
 
-    if (not message_obj) and isinstance(data.get("messages"), list) and data["messages"]:
-        first = data["messages"][0]
-        if isinstance(first, dict):
-            if isinstance(first.get("message"), dict):
-                message_obj = first["message"]
-            elif isinstance(first.get("text"), dict):
-                message_obj = {"text": first["text"]}
-            key_obj = first.get("key", {}) if isinstance(first.get("key"), dict) else {}
+    if not message_obj:
+        data_msgs = data.get("messages")
+        if isinstance(data_msgs, list) and data_msgs:
+            first = data_msgs[0]
+            if isinstance(first, dict):
+                first_msg = first.get("message")
+                first_text = first.get("text")
+                if isinstance(first_msg, dict):
+                    message_obj = first_msg
+                elif isinstance(first_text, dict):
+                    message_obj = {"text": first_text}
+                first_key = first.get("key")
+                key_obj = first_key if isinstance(first_key, dict) else {}
 
-    if (not message_obj) and isinstance(payload.get("messages"), list) and payload["messages"]:
-        first = payload["messages"][0]
-        if isinstance(first, dict):
-            if isinstance(first.get("message"), dict):
-                message_obj = first["message"]
-            elif isinstance(first.get("text"), dict):
-                message_obj = {"text": first["text"]}
-            key_obj = first.get("key", {}) if isinstance(first.get("key"), dict) else {}
+    if not message_obj:
+        payload_msgs = payload.get("messages")
+        if isinstance(payload_msgs, list) and payload_msgs:
+            first = payload_msgs[0]
+            if isinstance(first, dict):
+                first_msg = first.get("message")
+                first_text = first.get("text")
+                if isinstance(first_msg, dict):
+                    message_obj = first_msg
+                elif isinstance(first_text, dict):
+                    message_obj = {"text": first_text}
+                first_key = first.get("key")
+                key_obj = first_key if isinstance(first_key, dict) else {}
 
     remote_jid: Optional[str] = None
-    if isinstance(data.get("key"), dict):
-        remote_jid = data["key"].get("remoteJid")
+    data_key = data.get("key")
+    if isinstance(data_key, dict):
+        remote_jid = data_key.get("remoteJid")
     if not remote_jid and isinstance(key_obj, dict):
         remote_jid = key_obj.get("remoteJid")
     if not remote_jid:
         remote_jid = data.get("from") or payload.get("from")
-    if (not remote_jid) and isinstance(payload.get("messages"), list) and payload["messages"]:
-        first = payload["messages"][0]
-        if isinstance(first, dict):
-            remote_jid = first.get("from")
+    if not remote_jid:
+        payload_msgs = payload.get("messages")
+        if isinstance(payload_msgs, list) and payload_msgs:
+            first = payload_msgs[0]
+            if isinstance(first, dict):
+                remote_jid = first.get("from")
 
     from_me = False
-    if isinstance(data.get("key"), dict):
-        from_me = bool(data["key"].get("fromMe"))
+    if isinstance(data_key, dict):
+        from_me = bool(data_key.get("fromMe"))
     if not from_me and isinstance(key_obj, dict):
         from_me = bool(key_obj.get("fromMe"))
 
