@@ -31,12 +31,10 @@ class WhatsAppService:
         """
         if not self.base_url or not self.api_key:
             logger.warning("Missing Evolution API credentials. Simulating sending in console.")
-            print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
         if not self.instance:
             logger.warning("Missing EVOLUTION_INSTANCE. Simulating sending in console.")
-            print(f"[{remote_jid}] WhatsApp Bot: {text}")
             return None
 
         endpoint: str = f"{self.base_url}/message/sendText/{self.instance}"
