@@ -62,21 +62,21 @@ class WhatsAppService:
                 response = await client.post(endpoint, json=payload, headers=headers, timeout=10.0)
 
                 if response.status_code in [400, 404]:
-                    print(f"❌ Evolution API Error [{response.status_code}]: {response.text}")
-                    logger.error("Evolution API Error [%s]: %s", response.status_code, response.text)
+                    print(f"❌ Evolution API Error [{response.status_code}]: Verificar payload ou apikey.")
+                    logger.error("Evolution API Error [%s]", response.status_code)
 
                 response.raise_for_status()
                 return response.json()
         except httpx.RequestError as e:
-            print(f"❌ Connection error with Evolution API: {e}")
+            print("❌ Connection error with Evolution API.")
             logger.error("Connection error with Evolution API: %s", e)
             return None
         except httpx.HTTPStatusError as e:
-            print(f"❌ HTTP error from Evolution API: {e.response.status_code} - {e.response.text}")
-            logger.error("HTTP error from Evolution API: %s - %s", e.response.status_code, e.response.text)
+            print(f"❌ HTTP error from Evolution API: {e.response.status_code}.")
+            logger.error("HTTP error from Evolution API: %s", e.response.status_code)
             return None
         except Exception as e:
-            print(f"❌ Unexpected error sending WhatsApp message: {e}")
+            print("❌ Unexpected error sending WhatsApp message.")
             logger.error("Unexpected error sending WhatsApp message: %s", e)
             return None
 
