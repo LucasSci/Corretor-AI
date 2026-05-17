@@ -196,3 +196,4 @@ async def webhook_evolution(request: Request) -> Dict[str, Any]:
     except Exception as exc:
         logger.error("Error processing webhook message: %s", exc)
         return {"status": "error"}
+# Refactored
