@@ -1,3 +1,5 @@
+# Refactored
+
 from typing import List, Optional
 
 from dotenv import load_dotenv
