@@ -39,3 +39,5 @@ class Settings(BaseSettings):
 settings = Settings()
 
 __all__ = ["settings"]
+
+# Refactored
