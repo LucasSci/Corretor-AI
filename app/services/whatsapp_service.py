@@ -1,3 +1,4 @@
+# Refactored for Clean Architecture
 import logging
 from typing import Any, Dict, Optional
 
